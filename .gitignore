@@ -37,3 +37,6 @@ htmlcov/
 data/*.db
 data/*.sqlite
 data/*.sqlite3
+
+# Local backup files
+app/main_backup.py

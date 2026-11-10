@@ -1,0 +1,12 @@
+
+services:
+  resiliencelab:
+    build: .
+    image: resiliencelab:v1
+    container_name: resiliencelab-app
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped

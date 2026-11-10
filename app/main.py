@@ -8,6 +8,11 @@ import asyncio
 import time
 from datetime import datetime
 from fastapi.responses import FileResponse
+import docker
+import json
+import urllib.request
+import urllib.error
+
 
 DB = "data/resilience.db"
 
@@ -25,6 +30,44 @@ nodes = {
 }
 
 rr_index = 0
+route_lock = asyncio.Lock()
+docker_client = docker.from_env()
+
+
+NODE_CONTAINER_NAMES = {
+    "node-1": "resiliencelab-node-1",
+    "node-2": "resiliencelab-node-2",
+    "node-3": "resiliencelab-node-3"
+}
+
+
+def get_docker_node_status(node_id):
+    """Return the real Docker node state using container status and its HTTP health endpoint."""
+    container_name = NODE_CONTAINER_NAMES[node_id]
+
+    try:
+        container = docker_client.containers.get(container_name)
+        container.reload()
+
+        if container.status != "running":
+            return "failed"
+
+        request = urllib.request.Request(
+            f"http://{container_name}:9000/health",
+            headers={"Connection": "close"}
+        )
+
+        with urllib.request.urlopen(request, timeout=1.5) as response:
+            if response.status != 200:
+                return "failed"
+
+            health_data = json.loads(response.read().decode("utf-8"))
+            return "healthy" if health_data.get("status") == "healthy" else "failed"
+
+    except (docker.errors.NotFound, urllib.error.URLError, TimeoutError, ValueError):
+        return "failed"
+    except Exception:
+        return "failed"
 
 
 
@@ -128,36 +171,118 @@ def load_states():
                 collection[item_id]["requests"] = requests
 
 
-async def auto_recovery():
-    while True:
-        for service_id, service in services.items():
-            if service["status"] == "failed":
-                if time.time() - service["failed_at"] >= 10:
-                    service["status"] = "healthy"
-                    service["restarts"] += 1
-                    service["failed_at"] = None
-                    log_event(service_id, "Automatic recovery successful")
-                    save_states()
 
+
+
+
+async def auto_recovery():
+    recovery_delay = 60
+
+    while True:
+        # Recover simulated services
+        for service_id, service in services.items():
+            if (
+                service["status"] == "failed"
+                and service["failed_at"] is not None
+                and time.time() - service["failed_at"] >= recovery_delay
+            ):
+                service["status"] = "healthy"
+                service["restarts"] += 1
+                service["failed_at"] = None
+
+                log_event(service_id, "Automatic recovery successful")
+                save_states()
+
+        # Monitor Docker nodes
         for node_id, node in nodes.items():
-            if node["status"] == "failed":
-                if node["failed_at"] is not None and time.time() - node["failed_at"] >= 10:
+            actual_status = await asyncio.to_thread(
+                get_docker_node_status, node_id
+            )
+
+            if actual_status == "healthy":
+                if node["status"] == "failed":
                     node["status"] = "healthy"
                     node["restarts"] += 1
                     node["failed_at"] = None
-                    log_event(node_id, "Automatic node recovery successful")
+
+                    log_event(
+                        node_id,
+                        "Docker node automatic recovery successful"
+                    )
                     save_states()
+
+                elif node["failed_at"] is not None:
+                    node["failed_at"] = None
+                    save_states()
+
+                continue
+
+            # Detect failure
+            if node["status"] != "failed":
+                node["status"] = "failed"
+                node["failed_at"] = time.time()
+
+                log_event(node_id, "Docker node failure detected")
+                save_states()
+                continue
+
+            if node["failed_at"] is None:
+                node["failed_at"] = time.time()
+                save_states()
+                continue
+
+            # Restart after recovery delay
+            if time.time() - node["failed_at"] >= recovery_delay:
+                try:
+                    container = await asyncio.to_thread(
+                        docker_client.containers.get,
+                        NODE_CONTAINER_NAMES[node_id]
+                    )
+
+                    await asyncio.to_thread(container.reload)
+
+                    if container.status != "running":
+                        await asyncio.to_thread(container.start)
+
+                except docker.errors.DockerException as error:
+                    log_event(
+                        node_id,
+                        f"Automatic recovery failed: {error}"
+                    )
 
         await asyncio.sleep(2)
 
+
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    print("STARTUP: Initializing database...", flush=True)
     init_db()
+    print("STARTUP: Database initialized.", flush=True)
+
+    print("STARTUP: Loading saved states...", flush=True)
     load_states()
+    print("STARTUP: States loaded.", flush=True)
+
+    print("STARTUP: Starting recovery task...", flush=True)
     task = asyncio.create_task(auto_recovery())
-    yield
-    save_states()
-    task.cancel()
+
+    print("STARTUP: Application ready.", flush=True)
+
+    try:
+        yield
+    finally:
+        task.cancel()
+
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
+        save_states()
+        print("SHUTDOWN: Application stopped cleanly.", flush=True)
+
 
 app = FastAPI(title="ResilienceLab", version="1.0", lifespan=lifespan)
 @app.get("/")
@@ -214,24 +339,44 @@ def recover_service(service_id: str):
 
 @app.get("/api/cluster-health")
 def cluster_health():
-    total = len(nodes)
-    healthy = sum(
-        1 for node in nodes.values()
-        if node["status"] == "healthy"
-    )
+    statuses = {
+        node_id: get_docker_node_status(node_id)
+        for node_id in nodes
+    }
+
+    total = len(statuses)
+    healthy = sum(1 for status in statuses.values() if status == "healthy")
     failed = total - healthy
 
     return {
         "total_nodes": total,
         "healthy_nodes": healthy,
         "failed_nodes": failed,
-        "cluster_status": "healthy" if healthy == total else
-                          "degraded" if healthy > 0 else "down"
+        "cluster_status": (
+            "healthy" if healthy == total
+            else "degraded" if healthy > 0
+            else "down"
+        )
     }
 
 @app.get("/api/nodes")
 def get_nodes():
-    return nodes
+    result = {}
+
+    for node_id, node in nodes.items():
+        actual_status = get_docker_node_status(node_id)
+
+        result[node_id] = {
+            "name": node["name"],
+            "status": actual_status,
+            "requests": node["requests"],
+            "failed_at": node["failed_at"],
+            "restarts": node["restarts"]
+        }
+
+    return result
+
+
 
 
 @app.post("/api/nodes/{node_id}/fail")
@@ -240,58 +385,170 @@ def fail_node(node_id: str):
         raise HTTPException(404, "Node not found")
 
     node = nodes[node_id]
+    container_name = NODE_CONTAINER_NAMES[node_id]
 
-    if node["status"] == "failed":
-        return {"message": "Node already failed"}
+    try:
+        container = docker_client.containers.get(container_name)
+        container.reload()
 
-    node["status"] = "failed"
-    node["failed_at"] = time.time()
-    log_event(node_id, "Node failure detected")
-    save_states()
+        if container.status == "running":
+            container.stop(timeout=2)
 
-    return {"message": f"{node_id} marked as failed"}
+        node["status"] = "failed"
+        if node["failed_at"] is None:
+            node["failed_at"] = time.time()
+
+        log_event(node_id, "Docker container failure triggered")
+        save_states()
+
+        return {
+            "message": f"{node_id} Docker container stopped successfully",
+            "status": "failed"
+        }
+
+    except docker.errors.NotFound:
+        node["status"] = "failed"
+        if node["failed_at"] is None:
+            node["failed_at"] = time.time()
+        save_states()
+        raise HTTPException(404, "Docker node container not found")
+
+    except docker.errors.DockerException as error:
+        raise HTTPException(500, f"Docker operation failed: {error}")
+
 
 
 @app.post("/api/nodes/{node_id}/recover")
-def recover_node(node_id: str):
+async def recover_node(node_id: str):
     if node_id not in nodes:
         raise HTTPException(404, "Node not found")
 
     node = nodes[node_id]
-    node["status"] = "healthy"
-    node["failed_at"] = None
-    node["restarts"] += 1
 
-    log_event(node_id, "Manual recovery successful")
-    save_states()
+    try:
+        container = await asyncio.to_thread(
+            docker_client.containers.get,
+            NODE_CONTAINER_NAMES[node_id]
+        )
 
-    return {"message": f"{node_id} recovered successfully"}
+        await asyncio.to_thread(container.reload)
+
+        if container.status != "running":
+            await asyncio.to_thread(container.start)
+
+        deadline = time.time() + 10
+
+        while time.time() < deadline:
+            actual_status = await asyncio.to_thread(
+                get_docker_node_status, node_id
+            )
+
+            if actual_status == "healthy":
+                if node["status"] == "failed":
+                    node["restarts"] += 1
+
+                node["status"] = "healthy"
+                node["failed_at"] = None
+
+                log_event(node_id, "Manual Docker recovery successful")
+                save_states()
+
+                return {
+                    "message": f"{node_id} recovered successfully",
+                    "status": "healthy"
+                }
+
+            await asyncio.sleep(0.5)
+
+        raise HTTPException(
+            503,
+            f"{node_id} health check failed after restart"
+        )
+
+    except docker.errors.NotFound:
+        raise HTTPException(404, "Docker node container not found")
+
+    except docker.errors.DockerException as error:
+        raise HTTPException(500, f"Docker operation failed: {error}")
+
 
 
 @app.post("/api/route")
-def route_request():
+async def route_request():
     global rr_index
 
-    healthy_nodes = [
-        node_id for node_id, node in nodes.items()
-        if node["status"] == "healthy"
-    ]
+    async with route_lock:
+        node_ids = list(nodes.keys())
+        total_nodes = len(node_ids)
 
-    if not healthy_nodes:
-        raise HTTPException(503, "No healthy servers available")
+        if total_nodes == 0:
+            raise HTTPException(503, "No nodes configured")
 
-    selected = healthy_nodes[rr_index % len(healthy_nodes)]
-    rr_index += 1
+        for offset in range(total_nodes):
+            index = (rr_index + offset) % total_nodes
+            selected = node_ids[index]
 
-    nodes[selected]["requests"] += 1
+            actual_status = await asyncio.to_thread(
+                get_docker_node_status, selected
+            )
 
-    log_event(selected, "Request routed successfully")
+            if actual_status != "healthy":
+                continue
 
-    return {
-        "message": "Request routed successfully",
-        "selected_node": selected,
-        "total_requests": nodes[selected]["requests"]
-    }
+            node_url = (
+                f"http://{NODE_CONTAINER_NAMES[selected]}:9000/process"
+            )
+
+            def send_request():
+                with urllib.request.urlopen(
+                    node_url, timeout=3
+                ) as response:
+                    return json.loads(
+                        response.read().decode("utf-8")
+                    )
+
+            try:
+                result = await asyncio.to_thread(send_request)
+
+                nodes[selected]["requests"] += 1
+                nodes[selected]["status"] = "healthy"
+                nodes[selected]["failed_at"] = None
+
+                rr_index = (index + 1) % total_nodes
+
+                log_event(selected, "Request processed successfully")
+                save_states()
+
+                return {
+                    "message": "Request processed successfully",
+                    "selected_node": selected,
+                    "node_response": result,
+                    "total_requests": nodes[selected]["requests"]
+                }
+
+
+            except Exception as error:
+                actual_status = await asyncio.to_thread(
+                    get_docker_node_status, selected
+                )
+
+                if actual_status == "healthy":
+                    nodes[selected]["status"] = "healthy"
+                    nodes[selected]["failed_at"] = None
+                else:
+                    nodes[selected]["status"] = "failed"
+                    nodes[selected]["failed_at"] = time.time()
+
+                log_event(selected, f"Request failed: {error}")
+                save_states()
+
+        raise HTTPException(
+            503,
+            "No healthy servers available to process the request"
+        )
+
+
+
 
 @app.get("/api/system")
 def system_metrics():
