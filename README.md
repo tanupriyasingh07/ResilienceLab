@@ -32,6 +32,12 @@ ResilienceLab demonstrates these concepts through a controlled, locally runnable
 | System metrics | psutil |
 | API server | Uvicorn |
 
+## System Architecture
+
+The following diagram represents the current implementation of ResilienceLab. Services and nodes are simulated within a single FastAPI application process.
+
+![ResilienceLab System Architecture](assets/architecture/system-architecture.png)
+
 ## Dashboard Preview
 
 ### System Overview
