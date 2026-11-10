@@ -40,11 +40,22 @@ The following diagram represents the current implementation of ResilienceLab. Se
 
 ## Project Demo
 
-Watch ResilienceLab in action:
+Watch the ResilienceLab demonstration:
 
-[View Demo Video](assets/demo/resiliencelab-demo.mp4)
+[![ResilienceLab Project Demo](https://img.youtube.com/vi/Pv6WM5nrrmQ/hqdefault.jpg)](https://youtu.be/Pv6WM5nrrmQ)
 
-The demonstration covers service failure simulation, automatic recovery, node health, request distribution, and event logging.
+▶ **[Watch the Full Demo on YouTube](https://youtu.be/Pv6WM5nrrmQ)**
+
+The demonstration covers:
+
+- Live system monitoring
+- Service failure simulation
+- Automatic recovery
+- Node health monitoring
+- Round-robin load balancing
+- Event logging
+
+*Video visibility: Unlisted.*
 
 ## Dashboard Preview
 
