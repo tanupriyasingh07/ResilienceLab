@@ -38,6 +38,14 @@ The following diagram represents the current implementation of ResilienceLab. Se
 
 ![ResilienceLab System Architecture](assets/architecture/system-architecture.png)
 
+## Project Demo
+
+Watch ResilienceLab in action:
+
+[View Demo Video](assets/demo/resiliencelab-demo.mp4)
+
+The demonstration covers service failure simulation, automatic recovery, node health, request distribution, and event logging.
+
 ## Dashboard Preview
 
 ### System Overview
