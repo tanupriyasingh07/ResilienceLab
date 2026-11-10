@@ -1,159 +1,82 @@
 # Testing and Validation
 
-## 1. Testing Overview
+## 1. Overview
 
-ResilienceLab was tested locally to verify its API endpoints, service and node state transitions, automatic recovery, routing behaviour, cluster health calculations, system metrics, and event logging.
+ResilienceLab was tested locally to validate its service monitoring, failure simulation, automatic recovery, node management, load balancing, and event logging functionality.
 
-Testing was performed using the FastAPI Swagger interface and the browser dashboard.
+Testing was performed through the FastAPI endpoints, Swagger UI, and the dashboard.
 
-## 2. Testing Environment
+## 2. Test Environment
 
-| Component | Environment |
-|---|---|
-| Operating System | Windows 11 |
-| Backend | Python, FastAPI |
-| API Server | Uvicorn |
-| Database | SQLite |
-| System Metrics | psutil |
-| API Testing | FastAPI Swagger UI |
-| Dashboard | Local browser |
+- Operating System: Windows 11
+- Backend: Python, FastAPI
+- Database: SQLite
+- Monitoring: psutil
+- API Server: Uvicorn
+- Testing Interface: Swagger UI and web dashboard
 
 ## 3. Functional Test Cases
 
-| Test ID | Test Scenario | Expected Result | Observed Result |
-|---|---|---|---|
-| TC-01 | Check application health | Application reports running status | Passed |
-| TC-02 | Retrieve service list | All three simulated services are returned | Passed |
-| TC-03 | Fail a service | Selected service changes to failed | Passed |
-| TC-04 | Automatic service recovery | Failed service recovers after configured interval | Passed |
-| TC-05 | Retrieve node list | All three simulated nodes are returned | Passed |
-| TC-06 | Fail a node | Selected node changes to failed | Passed |
-| TC-07 | Recover a node | Selected node returns to healthy state | Passed |
-| TC-08 | Verify recovery persistence | Failure timestamp is saved and restored | Passed |
-| TC-09 | Check cluster health | Health reflects current node states | Passed |
-| TC-10 | Verify round-robin routing | Requests follow node sequence | Passed |
-| TC-11 | Exclude failed node | Failed node receives no new routed requests | Passed |
-| TC-12 | Check local system metrics | CPU, memory, disk, and uptime are returned | Passed |
-| TC-13 | Retrieve event logs | Recorded events are returned from SQLite | Passed |
+| Test Case | Expected Result | Status |
+|---|---|---|
+| API health check | Returns running status | Passed |
+| Service listing | Displays available services | Passed |
+| Service failure | Changes service status to failed | Passed |
+| Automatic service recovery | Restores service after recovery interval | Passed |
+| Node failure | Marks selected node as failed | Passed |
+| Node recovery | Restores node health | Passed |
+| Round-robin routing | Distributes requests across healthy nodes | Passed |
+| Failed-node exclusion | Prevents routing requests to failed nodes | Passed |
+| Cluster health | Reports healthy and failed nodes | Passed |
+| System monitoring | Returns CPU, memory, disk and uptime metrics | Passed |
+| Event logging | Stores and retrieves system events | Passed |
+| State persistence | Preserves node and service states using SQLite | Passed |
 
-## 4. Detailed Test Observations
+## 4. Failure Recovery Validation
 
-### 4.1 Application Health
+The following scenarios were manually verified:
 
-The health endpoint was tested and returned:
+1. A service was marked as failed through its API endpoint.
+2. The system detected the failed state.
+3. Automatic recovery restored the service after the configured recovery interval.
+4. The restart counter increased after recovery.
+5. The same process was verified for simulated cluster nodes.
 
-```json
-{
-  "status": "running",
-  "project": "ResilienceLab"
-}
-```
+## 5. Load Balancing Validation
 
-**Result:** Passed.
+Round-robin routing was tested using six consecutive requests.
 
-### 4.2 Service Failure and Recovery
-
-The `api-server` service was manually marked as failed.
-
-Its status changed to failed and a failure timestamp was recorded. After the configured recovery interval, the service returned to a healthy state.
-
-**Result:** Passed.
-
-### 4.3 Node Failure and Recovery
-
-A simulated node was marked as failed and then manually recovered.
-
-The application correctly updated the node state. Automatic recovery was also verified.
-
-**Result:** Passed.
-
-### 4.4 Persistence of Failure State
-
-The node failure timestamp was checked after saving and reloading application state.
-
-The timestamp was retained, allowing the recovery checker to evaluate the elapsed failure duration.
-
-**Result:** Passed.
-
-### 4.5 Round-Robin Routing
-
-Six consecutive routing requests were tested with all three nodes healthy.
-
-Observed sequence:
+The observed sequence was:
 
 ```text
-node-1
-node-2
-node-3
-node-1
-node-2
-node-3
+Request 1 → node-1
+Request 2 → node-2
+Request 3 → node-3
+Request 4 → node-1
+Request 5 → node-2
+Request 6 → node-3
 ```
 
-Each node received two requests.
+A failed node was excluded from subsequent routing requests.
 
-**Result:** Passed.
+## 6. API Testing
 
-### 4.6 Failed Node Exclusion
+API endpoints were tested using FastAPI's interactive Swagger interface:
 
-`node-2` was marked as failed. Subsequent routing requests selected the remaining healthy nodes.
+`http://127.0.0.1:8000/docs`
 
-The failed node did not receive new routed requests during this test.
+The tests covered health checks, service management, node management, routing, cluster health, system metrics, and event logs.
 
-**Result:** Passed.
+## 7. Current Limitations
 
-### 4.7 Cluster Health
+- Nodes and services are simulated within a single application process.
+- Failure recovery operates on simulated application state.
+- The current implementation does not restart real infrastructure or independent containers.
+- Performance and scalability have not been benchmarked under production workloads.
+- Tests are currently manual; automated test coverage is planned.
 
-The cluster health endpoint was checked after a node failure.
+## 8. Conclusion
 
-With two healthy nodes and one failed node, the overall status was reported as degraded.
+The tested MVP successfully demonstrates local service monitoring, failure simulation, automatic recovery, round-robin routing, cluster health reporting, and event persistence.
 
-**Result:** Passed.
-
-### 4.8 System Metrics
-
-The system monitoring endpoint returned CPU, memory, disk, and uptime information using psutil.
-
-**Result:** Passed.
-
-### 4.9 Event Logging
-
-The logs endpoint returned chronological events with timestamps and incremental identifiers.
-
-Failure, recovery, and routing events were visible.
-
-**Result:** Passed.
-
-## 5. Dashboard Validation
-
-The browser dashboard was checked for:
-
-- System metric display.
-- Service health status.
-- Cluster health status.
-- Node failure and recovery controls.
-- Traffic distribution.
-- Event log display.
-- Periodic data refresh.
-
-**Result:** Dashboard functionality and visual presentation verified locally.
-
-## 6. Known Testing Limitations
-
-The tests validate the current local simulation. They do not establish production readiness.
-
-The following areas have not yet been validated:
-
-- Communication between independent machines.
-- Real container or process failure recovery.
-- Concurrent multi-user workloads.
-- High-volume performance and stress testing.
-- Distributed state consistency.
-- Production security and authentication.
-- Cloud deployment reliability.
-
-## 7. Conclusion
-
-The current functional tests confirm that the implemented local simulation supports service and node failure operations, recovery, health-state tracking, failure-aware round-robin routing, system metrics, and persistent event logging.
-
-Further integration, performance, security, and deployment testing will be required as the project evolves.
+Further testing will be required as independent services, container orchestration, and production deployment are introduced.

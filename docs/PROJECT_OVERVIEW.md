@@ -1,117 +1,107 @@
-# Project Overview
+# ResilienceLab — Project Overview
 
 ## 1. Introduction
 
-ResilienceLab is a locally runnable project that demonstrates core reliability concepts used in distributed systems. It provides a controlled environment to simulate service and node failures, observe component health, test automatic recovery, and understand how requests can be distributed across available nodes.
+ResilienceLab is a self-healing distributed systems monitoring and simulation project. It provides a local environment to explore how services and server nodes behave during failures, how recovery is handled, and how incoming requests can be routed to healthy nodes.
 
-The project combines a Python backend, a browser-based dashboard, and SQLite event storage.
+The application combines a FastAPI backend, a browser-based dashboard, and SQLite-based event persistence.
 
 ## 2. Problem Statement
 
-Applications that depend on multiple services and servers must handle component failures without losing visibility into system health.
+Modern applications depend on multiple services and infrastructure components. A failure in one component can affect availability and interrupt request processing.
 
-Developers need ways to understand:
+Understanding failure detection, recovery, service health, and traffic distribution is important when designing reliable systems.
 
-- What happens when a service becomes unavailable?
-- How can a system identify failed components?
-- How should requests be handled when a node is unhealthy?
-- How can recovery events be tracked?
-- How can system health be presented clearly?
-
-ResilienceLab explores these questions through a small, interactive simulation.
+ResilienceLab demonstrates these concepts through controlled failure simulations and a monitoring dashboard.
 
 ## 3. Project Objectives
 
-1. Demonstrate service and node failure scenarios.
-2. Implement basic health-state tracking.
-3. Simulate automatic recovery after a configured interval.
-4. Distribute requests across healthy nodes using round-robin routing.
-5. Prevent failed nodes from receiving routed requests.
-6. Store important system events in SQLite.
-7. Present health information through a live dashboard.
-8. Provide REST API endpoints for interacting with the simulation.
+- Monitor the health of application services and simulated nodes.
+- Trigger and observe service and node failures.
+- Demonstrate automatic recovery after a configured interval.
+- Route requests across healthy nodes using round-robin logic.
+- Exclude failed nodes from request distribution.
+- Display CPU, memory, disk usage, and system uptime.
+- Persist system events and state using SQLite.
+- Provide REST API endpoints for interacting with the simulation.
 
-## 4. Intended Users
-
-The current version is intended for:
-
-- Computer science students learning distributed systems.
-- Developers exploring failure handling and recovery concepts.
-- Learners practising backend development and REST APIs.
-- Technical interview candidates demonstrating system reliability concepts.
-
-A future expanded version could be useful as a learning and testing environment for development teams.
-
-## 5. Core Components
+## 4. Current Features
 
 ### Service Monitoring
-
-The application maintains three simulated services:
-
+Displays the health of three simulated services:
 - API Server
 - Database
-- Worker
+- Background Worker
 
-Their health states can be viewed and changed through the dashboard or API.
+### Failure Simulation
+Allows users to manually trigger failures for services and nodes.
 
-### Node Monitoring
+### Automatic Recovery
+A background recovery mechanism checks failed components and restores them after the configured recovery interval.
 
-The simulation contains three nodes. Each node has a health state, failure timestamp, and request counter.
+### Cluster Health
+Displays total, healthy, and failed node counts along with the overall cluster status.
 
-### Failure and Recovery
-
-Users can manually trigger failures. The application records the failure time and automatically restores simulated components after the configured recovery interval.
-
-### Load Balancing
-
-A round-robin strategy distributes incoming test requests among healthy nodes. Failed nodes are excluded from routing.
+### Round-Robin Load Balancing
+Distributes incoming test requests among available healthy nodes in sequence.
 
 ### System Monitoring
-
-The dashboard displays CPU usage, memory usage, disk usage, and uptime for the machine running the application.
+Displays CPU usage, memory usage, disk usage, and system uptime using psutil.
 
 ### Event Logging
+Stores and displays system events, including failures, recoveries, and request-routing activity.
 
-SQLite stores system events, including failures, recoveries, and routing activity.
+## 5. Technology Stack
 
-## 6. Technology Choices
-
-| Technology | Purpose |
+| Component | Technology |
 |---|---|
-| Python | Application logic |
-| FastAPI | Backend and REST API |
-| HTML | Dashboard structure |
-| CSS | Dashboard styling |
-| JavaScript | Dashboard interactions and live updates |
-| SQLite | Persistent event and state storage |
-| psutil | Local system metrics |
-| Uvicorn | Application server |
+| Backend | Python, FastAPI |
+| API Server | Uvicorn |
+| Frontend | HTML, CSS, JavaScript |
+| Database | SQLite |
+| System Metrics | psutil |
+| API Testing | Swagger UI |
 
-## 7. Current Project Scope
+## 6. Intended Users
 
-The current implementation is a single-process local simulation.
+ResilienceLab is intended for:
+- Students learning distributed systems concepts.
+- Developers exploring failure handling and recovery.
+- Software engineering learners studying load balancing.
+- Contributors interested in reliability engineering and monitoring tools.
 
-The services and nodes are represented inside the application rather than running as independent machines or containers. The routing logic demonstrates request distribution but does not provide production network load balancing.
+## 7. Current System Scope
 
-This distinction is important when evaluating the current capabilities.
+The current release is a local simulation environment.
 
-## 8. Expected Learning Outcomes
+Services and nodes are represented within a single FastAPI application. The load balancer demonstrates request-routing logic rather than distributing real network traffic across independent servers.
 
-The project provides practical experience with:
+Automatic recovery applies to simulated components and does not restart external services or machines.
 
-- Backend application design.
-- REST API development.
-- Health-state management.
-- Failure detection concepts.
-- Recovery workflows.
-- Round-robin scheduling.
-- Persistent event logging.
-- System resource monitoring.
-- Dashboard development.
-- Testing failure scenarios.
+System metrics represent the machine running the application.
 
-## 9. Future Direction
+## 8. Future Direction
 
-The project can evolve toward a more realistic reliability-testing platform through independent service processes, container-based environments, configurable health checks, additional routing algorithms, historical metrics, alerting, and remote deployment.
+The project is planned to evolve toward a more realistic infrastructure reliability platform through:
 
-These capabilities belong to the future development plan and are not part of the current implementation.
+- Independent service and node processes.
+- Docker-based service deployment and failure simulation.
+- Configurable health checks and recovery policies.
+- Additional load-balancing algorithms.
+- Historical metrics and performance analysis.
+- Monitoring and alerting integrations.
+- Cloud deployment and multi-user access.
+
+These are planned enhancements and are not part of the current release.
+
+## 9. Repository
+
+GitHub: https://github.com/tanupriyasingh07/ResilienceLab
+
+## 10. Project Author
+
+Designed and developed by Tanupriya Singh.
+
+## 11. License
+
+This project is distributed under the MIT License. See the repository's LICENSE file for details.

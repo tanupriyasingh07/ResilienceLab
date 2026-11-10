@@ -1,186 +1,180 @@
-# System Architecture
+# ResilienceLab — System Architecture
 
 ## 1. Architecture Overview
 
-ResilienceLab currently follows a simple three-layer architecture:
+ResilienceLab follows a lightweight client-server architecture.
 
-1. **Presentation Layer:** Browser-based dashboard.
-2. **Application Layer:** FastAPI backend containing simulation logic and REST endpoints.
-3. **Data Layer:** SQLite database for event logs and persisted system state.
+The browser-based dashboard communicates with a FastAPI backend through REST API endpoints. The backend manages simulated services, simulated cluster nodes, request routing, system metrics, and event persistence.
 
-The browser communicates with the backend through HTTP requests. The backend processes these requests, updates the simulation state, and returns JSON responses.
+SQLite stores application state and system event records.
 
 ## 2. High-Level Architecture
 
-```mermaid
-flowchart TD
-    U[User] --> D[Browser Dashboard]
-    D -->|HTTP Requests| API[FastAPI Application]
-
-    API --> SM[Service Manager]
-    API --> NM[Node Manager]
-    API --> LB[Round-Robin Router]
-    API --> MON[System Metrics]
-
-    SM --> DB[(SQLite Database)]
-    NM --> DB
-    LB --> DB
-
-    API -->|JSON Responses| D
-    MON --> PS[psutil]
+```text
+             USER
+              |
+              v
+      Browser Dashboard
+       HTML / CSS / JS
+              |
+          REST API
+              |
+              v
+       FastAPI Backend
+              |
+     +--------+---------+
+     |        |         |
+     v        v         v
+  Service   Node     Load Balancer
+ Manager   Manager    (Round Robin)
+     |        |         |
+     +--------+---------+
+              |
+       +------+------+
+       |             |
+       v             v
+   SQLite DB     System Metrics
+   State & Logs     (psutil)
 ```
 
-## 3. Component Responsibilities
+## 3. Main Components
 
-### 3.1 Browser Dashboard
+### 3.1 Frontend — Browser Dashboard
 
-Location: `static/index.html`
+The frontend is implemented using HTML, CSS, and JavaScript.
 
 Responsibilities:
-
-- Display system resource metrics.
+- Display system metrics.
 - Show service and node health.
-- Display overall cluster health.
-- Trigger failure and recovery operations.
-- Display request distribution.
-- Show recent system events.
-- Refresh displayed information periodically.
+- Trigger failure and recovery actions.
+- Send test requests to the load balancer.
+- Display cluster health and traffic distribution.
+- Retrieve and display system event logs.
+- Refresh dashboard data periodically.
 
-The dashboard uses HTML, CSS, and JavaScript.
+### 3.2 Backend — FastAPI
 
-### 3.2 FastAPI Application
-
-Location: `app/main.py`
+FastAPI handles application logic and exposes REST API endpoints.
 
 Responsibilities:
-
-- Expose REST API endpoints.
-- Maintain simulated service and node states.
-- Process failure and recovery requests.
-- Execute automatic recovery checks.
-- Route test requests to healthy nodes.
+- Manage service states.
+- Manage simulated node states.
+- Handle failure and recovery requests.
+- Execute round-robin request routing.
 - Calculate cluster health.
-- Collect local system metrics.
-- Retrieve event logs.
+- Retrieve system metrics.
+- Read and write persistent application data.
+
+Uvicorn runs the FastAPI application.
 
 ### 3.3 Service Manager
 
-The service manager maintains the state of the simulated services:
+The service manager maintains the state of three simulated services:
 
-- `api-server`
-- `database`
-- `worker`
+- API Server
+- Database
+- Background Worker
 
-It handles manual failure, recovery, failure timestamps, and automatic recovery checks.
+It supports manual failure, recovery, restart tracking, and automatic recovery.
 
 ### 3.4 Node Manager
 
-The node manager maintains three simulated nodes:
+The node manager manages three simulated cluster nodes.
 
-- `node-1`
-- `node-2`
-- `node-3`
+It tracks:
+- Node health.
+- Failure timestamps.
+- Recovery status.
+- Request counts.
 
-It tracks node health, failure timestamps, restart counts, and request counts.
+Failed nodes are excluded from request routing.
 
 ### 3.5 Load Balancer
 
-The current implementation uses round-robin scheduling.
+The load balancer uses a round-robin strategy.
 
-It selects the next healthy node in sequence. Failed nodes are excluded from the selection process.
+It selects the next healthy node for each request. Failed nodes are skipped.
 
 If no healthy node is available, the routing endpoint returns an HTTP 503 response.
 
-### 3.6 Monitoring Module
+### 3.6 System Metrics
 
-The monitoring functionality uses `psutil` to collect information from the local machine:
+The psutil library collects metrics from the machine running ResilienceLab.
 
-- CPU utilization
-- Memory utilization
-- Disk utilization
-- System uptime
+Metrics include:
+- CPU utilization.
+- Memory utilization.
+- Disk utilization.
+- System uptime.
 
-These metrics describe the machine running ResilienceLab, not a collection of independent servers.
+### 3.7 Database Layer
 
-### 3.7 SQLite Storage
+SQLite provides persistent storage.
 
-Database location: `data/resilience.db`
+The application uses two main tables:
 
-SQLite is used to persist:
+- `logs`: stores system events such as failures, recoveries, and request routing.
+- `system_state`: stores persisted component state.
 
-- System event logs.
-- Relevant service and node state.
+## 4. Request Flow
 
-The application loads saved state when it starts and records important state changes.
+A typical dashboard interaction follows this sequence:
 
-## 4. Data Flow
+1. The user performs an action on the dashboard.
+2. JavaScript sends an HTTP request to a FastAPI endpoint.
+3. FastAPI processes the request.
+4. The relevant service, node, or routing logic updates its state.
+5. Relevant events and state changes are persisted in SQLite.
+6. The backend returns a response.
+7. The dashboard updates the displayed information.
 
-### 4.1 Dashboard Refresh
+## 5. Failure and Recovery Flow
 
-1. The browser sends requests to the relevant API endpoints.
-2. FastAPI retrieves the latest simulation state.
-3. The backend returns JSON responses.
-4. JavaScript updates the dashboard.
-5. The refresh cycle repeats approximately every three seconds.
+1. A user triggers a failure for a simulated service or node.
+2. The backend marks the component as failed.
+3. The failure timestamp is recorded.
+4. The event is stored in SQLite.
+5. The recovery checker periodically checks failed components.
+6. Once the configured recovery interval has elapsed, the component is restored.
+7. The restart count is updated where applicable.
+8. A recovery event is recorded.
+9. The dashboard displays the updated status.
 
-### 4.2 Failure Simulation
+## 6. Load-Balancing Flow
 
-1. A user selects a service or node failure action.
-2. The dashboard sends a POST request.
-3. The backend marks the selected component as failed.
-4. The failure timestamp is recorded.
-5. The state change is persisted and logged.
-6. The dashboard displays the updated status.
-
-### 4.3 Automatic Recovery
-
-1. A background checker examines failed components.
-2. It compares the current time with the recorded failure time.
-3. Once the configured recovery interval has elapsed, the component is restored.
-4. The restart counter is updated where applicable.
-5. The recovery event is logged.
-6. The dashboard displays the recovered state.
-
-### 4.4 Request Routing
-
-1. A client or dashboard action calls the routing endpoint.
+1. The dashboard sends a test request.
 2. The backend identifies healthy nodes.
-3. The round-robin pointer selects the next eligible node.
-4. The selected node's request counter is incremented.
-5. The routing result is returned.
+3. The round-robin selection logic chooses the next eligible node.
+4. The selected node's request count is incremented.
+5. The routing event is recorded.
+6. The selected node information is returned to the dashboard.
 
-## 5. State and Persistence
+## 7. Background Tasks
 
-The simulation maintains service and node state in application memory.
+The application uses periodic background checks to inspect failed services and nodes.
 
-SQLite provides persistence for relevant state and event records. Failure timestamps are important because they allow the application to determine whether an automatic recovery interval has elapsed.
+The recovery checker runs at a configured interval and restores components when their recovery time has elapsed.
 
-The current design is suitable for a single-process simulation. It does not provide distributed state coordination between multiple backend instances.
+## 8. Current Architecture Limitations
 
-## 6. Architecture Limitations
+The current version is a local simulation.
 
-The current architecture has the following boundaries:
-
-- All simulated services and nodes run within one application process.
-- There is no independent service-to-service network communication.
+- Services and nodes are represented within one FastAPI application.
+- Nodes are not independent physical or virtual servers.
+- Request routing demonstrates application-level selection, not real network traffic distribution.
+- Recovery changes simulated component state rather than restarting external processes.
 - SQLite is used for local persistence.
-- There is no distributed consensus or leader election.
-- The load balancer is an application-level simulation.
-- Recovery changes simulated state rather than restarting real infrastructure.
-- The dashboard communicates with the backend through HTTP polling rather than WebSockets.
 
-## 7. Planned Architecture Evolution
+## 9. Planned Architecture Improvements
 
-Future development may introduce:
+Future versions may introduce:
 
-- Independent services running in Docker containers.
-- Container health checks.
-- Real inter-service communication.
-- Redis or another shared state store.
-- PostgreSQL for larger deployments.
-- Prometheus metrics integration.
-- Grafana dashboards.
+- Independent service processes.
+- Docker containers for service isolation.
+- Real health-check endpoints.
 - Configurable recovery policies.
-- Remote deployment and multi-user access.
+- Additional load-balancing strategies.
+- Prometheus metrics integration.
+- Cloud deployment and multi-user access.
 
-These changes will require additional architectural design and testing before being considered implemented.
+These improvements are planned and are not implemented in the current version.
