@@ -206,3 +206,8 @@ These are planned enhancements, not features of the current version.
 ## Author
 
 **Designed and developed by Tanupriya Singh**
+
+## License
+
+This project is licensed under the MIT License.
+See the [LICENSE](LICENSE) file for details.
