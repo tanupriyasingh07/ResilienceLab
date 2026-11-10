@@ -32,6 +32,23 @@ ResilienceLab demonstrates these concepts through a controlled, locally runnable
 | System metrics | psutil |
 | API server | Uvicorn |
 
+## Dashboard Preview
+
+### System Overview
+![Dashboard Overview](assets/screenshots/dashboard-overview.png)
+
+### Service Health
+![Service Health](assets/screenshots/service-health.png)
+
+### Cluster Health
+![Cluster Health](assets/screenshots/cluster-health.png)
+
+### Load Balancer and Nodes
+![Load Balancer](assets/screenshots/load-balancer.png)
+
+### Event Logs
+![Event Logs](assets/screenshots/event-logs.png)
+
 ## Project Structure
 
 ```text
