@@ -1,0 +1,684 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ResilienceLab | Infrastructure Monitor</title>
+
+<style>
+:root {
+    --bg: #f3f2ec;
+    --surface: #ffffff;
+    --surface-soft: #eaece5;
+    --text: #202b28;
+    --muted: #727c75;
+    --border: #dedfd7;
+    --green: #28634e;
+    --green-soft: #e2eee7;
+    --red: #b54d4d;
+    --red-soft: #f8e8e5;
+    --amber: #a66c19;
+    --amber-soft: #f7edda;
+    --shadow: 0 3px 12px rgba(35, 48, 40, .045);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Inter, "Segoe UI", Arial, sans-serif;
+}
+
+header {
+    padding: 22px 6%;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+h1 {
+    margin: 0;
+    font-size: 25px;
+    letter-spacing: -.7px;
+    color: var(--green);
+}
+
+header p {
+    margin: 6px 0 0;
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: .7px;
+}
+
+.live {
+    color: var(--green);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .5px;
+}
+
+main {
+    max-width: 1250px;
+    margin: auto;
+    padding: 28px 5%;
+}
+
+.section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 32px 0 15px;
+}
+
+h2 {
+    font-size: 17px;
+    margin: 0;
+    letter-spacing: -.2px;
+}
+
+.section-note {
+    font-size: 11px;
+    color: var(--muted);
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 15px;
+}
+
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+}
+
+.card small {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.metric {
+    font-size: 30px;
+    font-weight: 700;
+    margin: 13px 0;
+    letter-spacing: -1px;
+}
+
+.metric.compact {
+    font-size: 23px;
+    letter-spacing: -.5px;
+}
+
+.bar {
+    height: 7px;
+    background: var(--surface-soft);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 15px;
+}
+
+.bar span {
+    display: block;
+    height: 100%;
+    width: 0%;
+    background: var(--green);
+    transition: width .4s, background .3s;
+}
+
+.bar span.warning {
+    background: var(--amber);
+}
+
+.bar span.critical {
+    background: var(--red);
+}
+
+.metric-note {
+    display: block;
+    margin-top: 9px;
+    font-size: 11px;
+    color: var(--muted);
+}
+
+.warning-card {
+    border-color: #d9b56d;
+}
+
+.critical-card {
+    border-color: #d98d83;
+}
+
+.service {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.status {
+    font-size: 10px;
+    padding: 6px 10px;
+    border-radius: 20px;
+    background: var(--green-soft);
+    color: var(--green);
+    font-weight: 700;
+    letter-spacing: .4px;
+}
+
+.status.failed {
+    background: var(--red-soft);
+    color: var(--red);
+}
+
+button {
+    border: 0;
+    border-radius: 6px;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 12px;
+    margin: 4px 3px 0 0;
+    transition: .2s;
+}
+
+button:hover {
+    transform: translateY(-1px);
+    opacity: .87;
+}
+
+button:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.fail {
+    background: var(--red-soft);
+    color: var(--red);
+}
+
+.recover {
+    background: var(--green);
+    color: white;
+}
+
+.cluster-status {
+    font-size: 25px;
+    font-weight: 700;
+    margin-top: 13px;
+    color: var(--green);
+}
+
+.cluster-status.degraded {
+    color: var(--amber);
+}
+
+.cluster-status.unhealthy {
+    color: var(--red);
+}
+
+.traffic {
+    margin-top: 17px;
+}
+
+.traffic p {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.route-result {
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 7px;
+    background: var(--surface-soft);
+    font-size: 13px;
+    color: var(--text);
+}
+
+.logs {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 18px;
+    box-shadow: var(--shadow);
+    max-height: 420px;
+    overflow-y: auto;
+}
+
+.log {
+    padding: 12px 3px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text);
+}
+
+.log:last-child {
+    border-bottom: none;
+}
+
+.log strong {
+    color: var(--green);
+}
+
+.log small {
+    color: var(--muted);
+}
+
+footer {
+    text-align: center;
+    color: var(--muted);
+    padding: 28px 15px;
+    font-size: 12px;
+    line-height: 1.8;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+}
+
+footer strong {
+    color: var(--green);
+}
+
+@media(max-width:600px) {
+    header {
+        padding: 18px;
+        align-items: flex-start;
+        gap: 12px;
+        flex-direction: column;
+    }
+
+    main {
+        padding: 18px;
+    }
+
+    .grid {
+        grid-template-columns: 1fr;
+    }
+
+    .section-heading {
+        align-items: flex-start;
+        gap: 8px;
+        flex-direction: column;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <div>
+        <h1>ResilienceLab</h1>
+        <p>INFRASTRUCTURE CONTROL CENTER</p>
+    </div>
+    <div class="live">● LIVE MONITORING</div>
+</header>
+
+<main>
+
+    <div class="section-heading">
+        <h2>System Overview</h2>
+        <span class="section-note">LIVE SYSTEM METRICS</span>
+    </div>
+
+    <section class="grid">
+
+        <div class="card">
+            <small>CPU Usage</small>
+            <div class="metric" id="cpu">--%</div>
+            <div class="bar"><span id="cpuBar"></span></div>
+            <span class="metric-note">Processor utilization</span>
+        </div>
+
+        <div class="card" id="memoryCard">
+            <small>Memory Usage</small>
+            <div class="metric" id="memory">--%</div>
+            <div class="bar"><span id="memoryBar"></span></div>
+            <span class="metric-note" id="memoryNote">Checking memory...</span>
+        </div>
+
+        <div class="card">
+            <small>Disk Usage</small>
+            <div class="metric" id="disk">--%</div>
+            <div class="bar"><span id="diskBar"></span></div>
+            <span class="metric-note">Storage utilization</span>
+        </div>
+
+        <div class="card">
+            <small>System Uptime</small>
+            <div class="metric compact" id="uptime">--</div>
+            <span class="metric-note">Time since system boot</span>
+        </div>
+
+    </section>
+
+    <div class="section-heading">
+        <h2>Service Health</h2>
+        <span class="section-note">APPLICATION SERVICES</span>
+    </div>
+
+    <section class="grid" id="services"></section>
+
+    <div class="section-heading">
+        <h2>Cluster Health</h2>
+        <span class="section-note">NODE AVAILABILITY</span>
+    </div>
+
+    <section class="grid">
+
+        <div class="card">
+            <small>Total Nodes</small>
+            <div class="metric" id="totalNodes">--</div>
+        </div>
+
+        <div class="card">
+            <small>Healthy Nodes</small>
+            <div class="metric" id="healthyNodes">--</div>
+        </div>
+
+        <div class="card">
+            <small>Failed Nodes</small>
+            <div class="metric" id="failedNodes">--</div>
+        </div>
+
+        <div class="card">
+            <small>Cluster Status</small>
+            <div class="cluster-status" id="clusterStatus">--</div>
+        </div>
+
+    </section>
+
+    <div class="section-heading">
+        <h2>Load Balancer & Server Nodes</h2>
+        <span class="section-note">TRAFFIC MANAGEMENT</span>
+    </div>
+
+    <section class="grid" id="nodes"></section>
+
+    <div class="card traffic">
+        <strong>Traffic Distribution</strong>
+        <p>Send a test request through the load balancer.</p>
+        <button class="recover" onclick="routeRequest()">Send Test Request</button>
+        <div class="route-result" id="routeResult">
+            Waiting for requests...
+        </div>
+    </div>
+
+    <div class="section-heading">
+        <h2>System Event Logs</h2>
+        <span class="section-note">LATEST SYSTEM EVENTS</span>
+    </div>
+
+    <section class="logs" id="logs">
+        Loading events...
+    </section>
+
+</main>
+
+<footer>
+    <strong>ResilienceLab</strong> · Local System Monitoring & Automatic Recovery
+    <br>
+    Designed & Developed by <strong>Tanupriya Singh</strong>
+</footer>
+
+<script>
+
+async function request(url, method = "GET") {
+    const response = await fetch(url, { method });
+
+    if (!response.ok) {
+        throw new Error("API request failed (" + response.status + ")");
+    }
+
+    return response.json();
+}
+
+function formatUptime(seconds) {
+    seconds = Math.max(0, Math.floor(seconds));
+
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+
+    return `${days}d ${String(hours).padStart(2, "0")}h ${String(minutes).padStart(2, "0")}m`;
+}
+
+function updateBar(id, value) {
+    const bar = document.getElementById(id);
+    const percentage = Math.min(100, Math.max(0, Number(value) || 0));
+
+    bar.style.width = percentage + "%";
+    bar.className = "";
+
+    if (percentage >= 90) {
+        bar.classList.add("critical");
+    } else if (percentage >= 75) {
+        bar.classList.add("warning");
+    }
+}
+
+async function loadMetrics() {
+    try {
+        const d = await request("/api/system");
+
+        ["cpu", "memory", "disk"].forEach(k => {
+            document.getElementById(k).textContent =
+                Number(d[k]).toFixed(1) + "%";
+
+            updateBar(k + "Bar", d[k]);
+        });
+
+        document.getElementById("uptime").textContent =
+            formatUptime(d.uptime);
+
+        // Memory warning indicator
+        const memory = Number(d.memory);
+        const memoryCard = document.getElementById("memoryCard");
+        const memoryNote = document.getElementById("memoryNote");
+
+        memoryCard.classList.remove("warning-card", "critical-card");
+
+        if (memory >= 90) {
+            memoryCard.classList.add("critical-card");
+            memoryNote.textContent = "Critical: High memory usage";
+        } else if (memory >= 75) {
+            memoryCard.classList.add("warning-card");
+            memoryNote.textContent = "Warning: Memory usage elevated";
+        } else {
+            memoryNote.textContent = "Memory usage normal";
+        }
+
+    } catch (e) {
+        console.error("Metrics error:", e);
+    }
+}
+
+async function loadServices() {
+    try {
+        const data = await request("/api/services");
+
+        document.getElementById("services").innerHTML =
+            Object.entries(data).map(([id, s]) => `
+                <div class="card">
+                    <div class="service">
+                        <strong>${s.name}</strong>
+                        <span class="status ${s.status === "failed" ? "failed" : ""}">
+                            ${s.status.toUpperCase()}
+                        </span>
+                    </div>
+
+                    <p><small>Restart count: ${s.restarts}</small></p>
+
+                    <button class="fail" onclick="failService('${id}')">
+                        Simulate Failure
+                    </button>
+
+                    <button class="recover" onclick="recoverService('${id}')">
+                        Recover
+                    </button>
+                </div>
+            `).join("");
+
+    } catch (e) {
+        console.error("Services error:", e);
+    }
+}
+
+async function loadClusterHealth() {
+    try {
+        const data = await request("/api/cluster-health");
+
+        document.getElementById("totalNodes").textContent =
+            data.total_nodes;
+
+        document.getElementById("healthyNodes").textContent =
+            data.healthy_nodes;
+
+        document.getElementById("failedNodes").textContent =
+            data.failed_nodes;
+
+        const status = document.getElementById("clusterStatus");
+        status.textContent = data.cluster_status.toUpperCase();
+
+        status.className = "cluster-status";
+
+        if (data.cluster_status === "degraded") {
+            status.classList.add("degraded");
+        } else if (data.cluster_status !== "healthy") {
+            status.classList.add("unhealthy");
+        }
+
+    } catch (e) {
+        console.error("Cluster health error:", e);
+    }
+}
+
+async function loadNodes() {
+    try {
+        const data = await request("/api/nodes");
+
+        document.getElementById("nodes").innerHTML =
+            Object.entries(data).map(([id, node]) => `
+                <div class="card">
+                    <div class="service">
+                        <strong>${node.name}</strong>
+                        <span class="status ${node.status === "failed" ? "failed" : ""}">
+                            ${node.status.toUpperCase()}
+                        </span>
+                    </div>
+
+                    <p><small>Requests handled: ${node.requests}</small></p>
+
+                    <button class="fail" onclick="failNode('${id}')">
+                        Fail Node
+                    </button>
+
+                    <button class="recover" onclick="recoverNode('${id}')">
+                        Recover
+                    </button>
+                </div>
+            `).join("");
+
+    } catch (e) {
+        console.error("Nodes error:", e);
+    }
+}
+
+async function failNode(id) {
+    try {
+        await request("/api/nodes/" + id + "/fail", "POST");
+        await refresh();
+    } catch (e) {
+        alert(e.message);
+    }
+}
+
+async function recoverNode(id) {
+    try {
+        await request("/api/nodes/" + id + "/recover", "POST");
+        await refresh();
+    } catch (e) {
+        alert(e.message);
+    }
+}
+
+async function routeRequest() {
+    const resultBox = document.getElementById("routeResult");
+
+    try {
+        const result = await request("/api/route", "POST");
+
+        resultBox.textContent =
+            "Request successfully routed to: " + result.selected_node;
+
+        await refresh();
+
+    } catch (e) {
+        resultBox.textContent = "Routing failed: " + e.message;
+    }
+}
+
+async function loadLogs() {
+    try {
+        const data = await request("/api/logs");
+
+        document.getElementById("logs").innerHTML = data.length
+            ? data.map(l => `
+                <div class="log">
+                    <strong>${l.service}</strong> — ${l.event}
+                    <br>
+                    <small>${l.timestamp}</small>
+                </div>
+            `).join("")
+            : "No events recorded yet.";
+
+    } catch (e) {
+        console.error("Logs error:", e);
+    }
+}
+
+async function failService(id) {
+    try {
+        await request("/api/services/" + id + "/fail", "POST");
+        await refresh();
+    } catch (e) {
+        alert(e.message);
+    }
+}
+
+async function recoverService(id) {
+    try {
+        await request("/api/services/" + id + "/recover", "POST");
+        await refresh();
+    } catch (e) {
+        alert(e.message);
+    }
+}
+
+async function refresh() {
+    await Promise.all([
+        loadMetrics(),
+        loadServices(),
+        loadNodes(),
+        loadClusterHealth(),
+        loadLogs()
+    ]);
+}
+
+refresh();
+setInterval(refresh, 3000);
+
+</script>
+</body>
+</html>
