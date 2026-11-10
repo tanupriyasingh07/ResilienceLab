@@ -2,22 +2,28 @@
 
 ## 1. Technical Overview
 
-ResilienceLab is implemented as a Python-based web application using FastAPI. It provides a browser dashboard for monitoring and interacting with simulated services and cluster nodes.
+ResilienceLab is a Python-based self-healing distributed systems experimentation platform.
 
-The backend handles application logic, request routing, recovery checks, system metrics, and database operations.
+It uses FastAPI as the central coordinator and manages three independent Docker node containers. The application monitors node health, detects failures, performs recovery operations, routes requests across healthy nodes, and stores application state and event logs using SQLite.
 
-## 2. Technology Details
+A browser-based dashboard provides visibility into application health, node status, cluster health, request distribution, and system events.
+
+## 2. Technology Stack
 
 | Technology | Purpose |
 |---|---|
-| Python | Backend programming language |
+| Python 3.12 | Backend programming language |
 | FastAPI | REST API framework |
 | Uvicorn | ASGI application server |
+| Docker Engine | Container runtime |
+| Docker SDK for Python | Container monitoring and management |
+| Docker Compose | Main application container orchestration |
 | HTML | Dashboard structure |
 | CSS | Dashboard styling |
-| JavaScript | Dashboard interactions and API calls |
+| JavaScript | Dashboard interactions and API communication |
 | SQLite | Persistent state and event storage |
-| psutil | Operating system metrics |
+| psutil | Host system metrics |
+| HTTP | Communication between coordinator and nodes |
 
 ## 3. Application Structure
 
@@ -26,42 +32,78 @@ ResilienceLab/
 ├── app/
 │   ├── __init__.py
 │   └── main.py
+├── nodes/
+│   └── node_server.py
+├── static/
+│   └── index.html
 ├── assets/
 │   ├── architecture/
 │   ├── demo/
 │   └── screenshots/
-├── data/
-│   └── resilience.db
 ├── docs/
-├── static/
-│   └── index.html
+├── data/
+├── Dockerfile
+├── Dockerfile.node
+├── compose.yaml
+├── requirements.txt
+├── .dockerignore
 ├── .gitignore
 ├── LICENSE
-├── README.md
-└── requirements.txt
+└── README.md
 ```
 
-The `venv/` directory contains the local Python virtual environment and should not be committed to Git.
+The `data/` directory is used for runtime SQLite database storage. The local database file is excluded from Git.
+
+The `venv/` directory contains the local Python virtual environment and should not be committed.
 
 ## 4. Backend Implementation
 
 The main backend implementation is located in `app/main.py`.
 
 It contains:
-- FastAPI application initialization.
-- API route definitions.
-- Service state management.
-- Node state management.
-- Failure and recovery operations.
+
+- FastAPI application initialization and lifecycle management.
+- REST API route definitions.
+- Simulated service state management.
+- Docker node state management.
+- Docker container operations.
+- Node health checks.
+- Failure injection and recovery operations.
 - Round-robin request routing.
 - Cluster health calculation.
 - System metrics collection.
 - SQLite database operations.
-- Background recovery checks.
+- Background recovery monitoring.
 
-## 5. Service Management
+The application acts as the central coordinator for the Docker nodes.
 
-The application maintains three simulated services:
+## 5. Docker Node Architecture
+
+The project uses three independent Docker containers:
+
+| Node ID | Container Name | Internal Port |
+|---|---|---|
+| node-1 | resiliencelab-node-1 | 9000 |
+| node-2 | resiliencelab-node-2 | 9000 |
+| node-3 | resiliencelab-node-3 | 9000 |
+
+Each node runs the FastAPI application defined in `nodes/node_server.py`.
+
+### Node Endpoints
+
+**GET `/health`**
+
+Returns node health information, uptime, and request count.
+
+**GET `/process`**
+
+Processes a test request and increments the node's request counter.
+
+The nodes communicate with the central application over a shared Docker network.
+
+## 6. Service Management
+
+The application maintains three simulated application services:
 
 | Service ID | Display Name |
 |---|---|
@@ -69,102 +111,168 @@ The application maintains three simulated services:
 | database | Database |
 | worker | Background Worker |
 
-Each service maintains its health status and restart information.
+Each service maintains its health status, failure timestamp, and restart count.
 
-Users can trigger a failure or request manual recovery through the dashboard or API.
+Users can trigger service failures and request manual recovery through the dashboard or REST API.
 
-Failed services are automatically restored after the configured recovery interval.
+The background recovery mechanism restores failed simulated services after the configured recovery interval.
 
-## 6. Node Management
+These services are application-level simulations, not separate Docker containers.
 
-The simulated cluster contains three nodes:
+## 7. Docker Node Management
 
-- node-1
-- node-2
-- node-3
+The central application uses Docker SDK for Python to interact with the local Docker Engine.
 
-Node state includes health status, failure timestamp, and request count.
+Node management includes:
 
-The backend checks failed nodes periodically and restores them after the configured recovery interval.
+- Retrieving Docker container status.
+- Checking node HTTP health endpoints.
+- Stopping containers for failure injection.
+- Starting containers during recovery.
+- Tracking node request and restart counts.
+- Updating node state and event logs.
 
-## 7. Load-Balancing Logic
+Node health is determined using both Docker container status and HTTP health checks.
 
-ResilienceLab implements round-robin routing across healthy nodes.
+## 8. Load-Balancing Logic
 
-The selection process:
-1. Identify nodes currently marked healthy.
-2. Select the next node using the round-robin position.
-3. Skip nodes marked as failed.
-4. Increment the selected node's request count.
-5. Record the routing event.
-6. Return the selected node.
+ResilienceLab implements application-level round-robin request routing across healthy Docker nodes.
 
-If every node is unavailable, the API responds with HTTP 503.
+The routing process:
 
-## 8. Automatic Recovery
+1. Acquires the routing lock.
+2. Selects the next node using the round-robin position.
+3. Checks node availability.
+4. Skips unhealthy nodes.
+5. Sends an HTTP request to the selected node's `/process` endpoint.
+6. Updates request counters and records the event.
 
-The recovery mechanism periodically checks the failure timestamps of simulated components.
+If no healthy nodes are available, the API returns HTTP 503 Service Unavailable.
 
-When a component has remained failed for the configured recovery interval, the backend restores its healthy state and records the recovery event.
+The routing implementation demonstrates failure-aware request distribution rather than production-grade external load balancing.
 
-This mechanism demonstrates recovery logic; it does not restart real external services.
+## 9. Automatic Recovery
 
-## 9. Database Design
+A background asynchronous task periodically monitors simulated services and Docker nodes.
 
-The application uses SQLite for local persistence.
+The configured recovery delay for failed components is 60 seconds.
+
+### Docker Node Recovery Workflow
+
+1. The background task checks the node's actual health.
+2. A failed node is marked as failed.
+3. Its failure timestamp is recorded.
+4. After the recovery delay, the application checks the Docker container.
+5. If the container is stopped, the application attempts to start it.
+6. The node health endpoint is checked again.
+7. On successful health verification, the node is marked healthy and its restart count is updated.
+
+Docker operations are executed using `asyncio.to_thread()` to avoid blocking the asynchronous application event loop.
+
+Manual recovery is also available through the node recovery API.
+
+## 10. Database Design
+
+ResilienceLab uses SQLite for local persistence.
 
 ### logs
 
-Stores system events, including:
-- Service failures.
-- Service recoveries.
-- Node failures.
-- Node recoveries.
-- Successful request routing.
+Stores recorded system events, including:
+
+- Service failures and recoveries.
+- Docker node failure detection.
+- Automatic and manual recovery events.
+- Request routing and failures.
 
 ### system_state
 
-Stores persisted application state for simulated components.
+Stores persisted component state, including relevant status and counter information.
 
-The database file is located at:
+The database is stored at:
 
-`data/resilience.db`
+```text
+data/resilience.db
+```
 
-## 10. System Metrics
+The database directory is mounted into the application container so that data can persist across container rebuilds.
 
-The application uses psutil to collect:
+## 11. System Metrics
 
-- CPU usage.
-- Memory usage.
-- Disk usage.
+The application uses `psutil` to collect host-level system metrics.
+
+Metrics include:
+
+- CPU utilization.
+- Memory utilization.
+- Disk utilization.
 - System uptime.
 
-These values describe the local machine running the application.
+These values describe the machine running the ResilienceLab application, not individual Docker node resource consumption.
 
-## 11. Dashboard Communication
+## 12. Dashboard Communication
 
-The frontend uses JavaScript HTTP requests to communicate with the FastAPI backend.
+The frontend is implemented using HTML, CSS, and JavaScript in `static/index.html`.
 
-Dashboard data is refreshed periodically to display updated metrics, component status, cluster health, and event logs.
+The dashboard communicates with the FastAPI backend through HTTP API requests.
 
-## 12. Configuration and Dependencies
+It displays:
+
+- System overview.
+- Simulated service health.
+- Docker cluster health.
+- Node status.
+- Load-balancing activity.
+- Request distribution.
+- Event logs.
+
+Dashboard information is refreshed periodically to reflect updated application and cluster state.
+
+## 13. Configuration and Dependencies
 
 Python dependencies are listed in `requirements.txt`.
 
-Install them using:
+Install them locally using:
 
 ```powershell
 pip install -r requirements.txt
 ```
 
-Start the application using:
+Build and start the main application container using:
 
 ```powershell
-uvicorn app.main:app --reload
+docker compose up -d --build
 ```
 
-## 13. Technical Limitations
+Build the node image using:
 
-The current release is a single-application simulation. It does not provide independent server orchestration, container management, production-grade distributed consensus, or real infrastructure recovery.
+```powershell
+docker build -f Dockerfile.node -t resiliencelab-node:v1 .
+```
 
-These capabilities are potential areas for future development.
+The three node containers are started separately on the shared Docker network, as described in the deployment guide.
+
+The main application mounts the local Docker socket to manage containers. This provides powerful access to the Docker host and must remain restricted to trusted local environments.
+
+## 14. Technical Limitations
+
+- The system uses a single FastAPI coordinator.
+- Docker management depends on access to the local Docker Engine.
+- The Docker socket mount provides privileged access to the host.
+- Simulated application services are not independently deployed containers.
+- The routing mechanism is application-level request forwarding, not a production-grade external load balancer.
+- System metrics represent the host machine rather than individual node resources.
+- Per-node recovery operations do not yet have dedicated concurrency locks.
+- Production-scale performance, resilience, and security have not been validated.
+
+## 15. Future Engineering Work
+
+Potential improvements include:
+
+- Per-node recovery synchronization and concurrency safeguards.
+- Automated integration and fault-injection tests.
+- Prometheus metrics and Grafana dashboards.
+- Per-node resource monitoring.
+- Load and stress testing.
+- Recovery latency and throughput benchmarking.
+- More robust distributed deployment and orchestration.
+
