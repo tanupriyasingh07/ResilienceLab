@@ -40,3 +40,4 @@ data/*.sqlite3
 
 # Local backup files
 app/main_backup.py
+assets/demo/resiliencelab-failure-recovery-demo.mp4
