@@ -163,6 +163,54 @@ The demonstrations cover:
 
 ![Event Logs](assets/screenshots/event-logs.png)
 
+## Failure Detection & Recovery Evidence
+
+The following screenshots document the verified node failure and automatic recovery workflow.
+
+### 1. Initial Cluster State
+
+All three Docker nodes are healthy before failure injection.
+
+![Cluster Healthy Before Failure](assets/screenshots/cluster-healthy-before-failure.png)
+
+### 2. Node Failure and Degraded Cluster
+
+Node 2 is stopped through the application API. The cluster reports two healthy nodes and one failed node.
+
+![Cluster Degraded After Node Failure](assets/screenshots/cluster-degraded-node-failure.png)
+
+### 3. Failure-Aware Request Routing
+
+Four successful requests are routed through the remaining healthy nodes, excluding the failed node.
+
+![Failure Aware Routing](assets/screenshots/failure-aware-routing.png)
+
+### 4. Automatic Recovery
+
+The failed node automatically recovers, and the cluster returns to three healthy nodes.
+
+![Cluster Recovered After Failure](assets/screenshots/cluster-recovered-after-failure.png)
+
+## Infrastructure & Monitoring Evidence
+
+### Docker Container Infrastructure
+
+The application, monitoring services, and three independent server nodes running as Docker containers.
+
+![Docker Containers Running](assets/screenshots/docker-containers-running.png)
+
+### Grafana Monitoring Dashboard
+
+The combined ResilienceLab monitoring dashboard with seven panels for request traffic, latency, and cluster health.
+
+![Grafana Monitoring Dashboard](assets/screenshots/grafana-monitoring.png)
+
+### Prometheus Target Health
+
+Prometheus successfully scrapes the ResilienceLab application metrics endpoint.
+
+![Prometheus Target UP](assets/screenshots/prometheus-target-up.png)
+
 ## Project Structure
 
 ```text
