@@ -6,6 +6,8 @@ ResilienceLab is a Python-based self-healing distributed systems experimentation
 
 It uses FastAPI as the central coordinator and manages three independent Docker node containers. The application monitors node health, detects failures, performs recovery operations, routes requests across healthy nodes, and stores application state and event logs using SQLite.
 
+The platform integrates Prometheus for application metrics collection and Grafana for monitoring visualization.
+
 A browser-based dashboard provides visibility into application health, node status, cluster health, request distribution, and system events.
 
 ## 2. Technology Stack
@@ -17,12 +19,15 @@ A browser-based dashboard provides visibility into application health, node stat
 | Uvicorn | ASGI application server |
 | Docker Engine | Container runtime |
 | Docker SDK for Python | Container monitoring and management |
-| Docker Compose | Main application container orchestration |
+| Docker Compose | Application and monitoring stack |
 | HTML | Dashboard structure |
 | CSS | Dashboard styling |
 | JavaScript | Dashboard interactions and API communication |
 | SQLite | Persistent state and event storage |
 | psutil | Host system metrics |
+| prometheus-client | Application metrics instrumentation |
+| Prometheus | Metrics collection and storage |
+| Grafana | Monitoring visualization |
 | HTTP | Communication between coordinator and nodes |
 
 ## 3. Application Structure
@@ -40,6 +45,9 @@ ResilienceLab/
 │   ├── architecture/
 │   ├── demo/
 │   └── screenshots/
+├── monitoring/
+│   └── prometheus/
+│       └── prometheus.yml
 ├── docs/
 ├── data/
 ├── Dockerfile
@@ -74,6 +82,7 @@ It contains:
 - System metrics collection.
 - SQLite database operations.
 - Background recovery monitoring.
+- Prometheus metrics instrumentation.
 
 The application acts as the central coordinator for the Docker nodes.
 
@@ -209,7 +218,121 @@ Metrics include:
 
 These values describe the machine running the ResilienceLab application, not individual Docker node resource consumption.
 
-## 12. Dashboard Communication
+## 12. Prometheus Metrics Instrumentation
+
+ResilienceLab integrates the Prometheus Python client library through `prometheus-client`.
+
+The FastAPI application exposes a `/metrics` endpoint that provides metrics in Prometheus exposition format.
+
+### Implemented Metrics
+
+| Metric | Type | Description |
+|---|---|---|
+| `resiliencelab_http_requests_total` | Counter | Total HTTP requests grouped by method, endpoint, and status |
+| `resiliencelab_http_request_duration_seconds` | Histogram | HTTP request duration observations |
+| `resiliencelab_active_nodes` | Gauge | Number of healthy Docker nodes |
+| `resiliencelab_total_nodes` | Gauge | Total configured Docker nodes |
+
+### Request Instrumentation
+
+HTTP middleware records:
+
+- HTTP method.
+- Endpoint path.
+- Response status code.
+- Request duration.
+
+Requests to `/metrics` are excluded from the custom HTTP request counter and duration observations.
+
+### Cluster Metrics
+
+The cluster health endpoint updates the active-node and total-node gauges based on the current node health information.
+
+**Current implementation limitation:** These gauges are refreshed when `/api/cluster-health` is requested. A periodic background refresh mechanism is a potential improvement.
+
+## 13. Prometheus Configuration
+
+Prometheus runs as an independent Docker container and scrapes the FastAPI application's metrics endpoint.
+
+Configuration file:
+
+```text
+monitoring/prometheus/prometheus.yml
+```
+
+Current configuration:
+
+```yaml
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: "resiliencelab"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["resiliencelab:8000"]
+```
+
+The target uses the Docker Compose service name `resiliencelab` for internal container-to-container communication.
+
+Prometheus is exposed locally on port `9090`.
+
+Data retention is configured for three days.
+
+## 14. Grafana Monitoring Dashboard
+
+Grafana runs as an independent Docker container and uses Prometheus as its metrics data source.
+
+The Prometheus data source URL configured inside Grafana is:
+
+```text
+http://prometheus:9090
+```
+
+### Dashboard
+
+**ResilienceLab Cluster & Request Analytics**
+
+The combined dashboard contains seven panels:
+
+| Panel | Purpose |
+|---|---|
+| HTTP Request Rate | Displays HTTP request traffic over time |
+| Failed Nodes | Displays the number of failed nodes |
+| Healthy Nodes | Displays the number of healthy nodes |
+| Total Nodes | Displays the total configured nodes |
+| Request Duration (Latency) | Displays average HTTP request duration |
+| Total HTTP Requests | Displays accumulated HTTP request count |
+| Active Nodes | Displays the number of currently healthy nodes |
+
+### Monitoring Access
+
+| Service | Local URL |
+|---|---|
+| Prometheus | http://localhost:9090 |
+| Prometheus Targets | http://localhost:9090/targets |
+| Grafana | http://localhost:3000 |
+| Application Metrics | http://localhost:8000/metrics |
+
+## 15. Docker Compose Configuration
+
+Docker Compose manages the main application and monitoring services.
+
+### Services
+
+| Service | Container Name | Port |
+|---|---|---|
+| FastAPI Application | resiliencelab-app | 8000 |
+| Prometheus | resiliencelab-prometheus | 9090 |
+| Grafana | resiliencelab-grafana | 3000 |
+
+Prometheus and Grafana have individual memory limits of 256 MB.
+
+Grafana data is persisted through the `grafana-data` Docker volume.
+
+The three server node containers are currently created separately using the Docker CLI rather than being declared as Compose services.
+
+## 16. Dashboard Communication
 
 The frontend is implemented using HTML, CSS, and JavaScript in `static/index.html`.
 
@@ -227,7 +350,7 @@ It displays:
 
 Dashboard information is refreshed periodically to reflect updated application and cluster state.
 
-## 13. Configuration and Dependencies
+## 17. Configuration and Dependencies
 
 Python dependencies are listed in `requirements.txt`.
 
@@ -237,7 +360,7 @@ Install them locally using:
 pip install -r requirements.txt
 ```
 
-Build and start the main application container using:
+Build and start the application and monitoring stack using:
 
 ```powershell
 docker compose up -d --build
@@ -253,7 +376,7 @@ The three node containers are started separately on the shared Docker network, a
 
 The main application mounts the local Docker socket to manage containers. This provides powerful access to the Docker host and must remain restricted to trusted local environments.
 
-## 14. Technical Limitations
+## 18. Technical Limitations
 
 - The system uses a single FastAPI coordinator.
 - Docker management depends on access to the local Docker Engine.
@@ -261,18 +384,18 @@ The main application mounts the local Docker socket to manage containers. This p
 - Simulated application services are not independently deployed containers.
 - The routing mechanism is application-level request forwarding, not a production-grade external load balancer.
 - System metrics represent the host machine rather than individual node resources.
+- Cluster node metrics currently refresh when the cluster-health endpoint is queried.
 - Per-node recovery operations do not yet have dedicated concurrency locks.
 - Production-scale performance, resilience, and security have not been validated.
 
-## 15. Future Engineering Work
+## 19. Future Engineering Work
 
 Potential improvements include:
 
+- Periodic background refresh of cluster health metrics.
 - Per-node recovery synchronization and concurrency safeguards.
 - Automated integration and fault-injection tests.
-- Prometheus metrics and Grafana dashboards.
 - Per-node resource monitoring.
 - Load and stress testing.
 - Recovery latency and throughput benchmarking.
 - More robust distributed deployment and orchestration.
-

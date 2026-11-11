@@ -4,7 +4,7 @@
 
 ResilienceLab is a Docker-based distributed systems monitoring and failure-recovery platform. It demonstrates how distributed services can detect failures, isolate unhealthy nodes, reroute requests, and automatically recover failed containers.
 
-The platform combines a FastAPI backend, independent Docker-based server nodes, a monitoring dashboard, and persistent event logging to demonstrate core distributed systems reliability concepts.
+The platform combines a FastAPI backend, independent Docker-based server nodes, Prometheus metrics collection, Grafana observability dashboards, and persistent event logging.
 
 ## Overview
 
@@ -12,7 +12,7 @@ Modern applications depend on multiple services and server instances. When one c
 
 ResilienceLab explores these challenges through a locally runnable distributed environment.
 
-It uses actual Docker containers as server nodes and implements health checks, failure-aware request routing, round-robin load balancing, and automatic container recovery.
+It uses actual Docker containers as server nodes and implements health checks, failure-aware request routing, round-robin load balancing, automatic container recovery, and monitoring.
 
 ## Key Features
 
@@ -26,7 +26,9 @@ It uses actual Docker containers as server nodes and implements health checks, f
 - **Service failure simulation:** Simulate API, database, and background worker service failures.
 - **System monitoring:** Display CPU, memory, disk usage, and uptime.
 - **Persistent event logging:** Store events and system states using SQLite.
-- **Live dashboard:** Monitor services, nodes, traffic distribution, and recovery events.
+- **Prometheus metrics:** Expose HTTP request counters, request duration histograms, and cluster node metrics.
+- **Grafana dashboards:** Visualize request traffic, latency, and cluster health.
+- **Containerized monitoring stack:** Run the application, Prometheus, and Grafana using Docker Compose.
 
 ## Technology Stack
 
@@ -39,13 +41,15 @@ It uses actual Docker containers as server nodes and implements health checks, f
 | Database | SQLite |
 | System metrics | psutil |
 | Docker integration | Docker SDK for Python |
+| Application monitoring | Prometheus, prometheus-client |
+| Visualization | Grafana |
 | API server | Uvicorn |
 
 ## System Architecture
 
 ResilienceLab uses a central FastAPI application to monitor and coordinate independent Docker-based server nodes.
 
-The application communicates with Docker through the Docker SDK and checks node health through HTTP endpoints.
+The application communicates with Docker through the Docker SDK and checks node health through HTTP endpoints. Prometheus periodically scrapes application metrics, which Grafana visualizes through monitoring dashboards.
 
 ![ResilienceLab System Architecture](assets/architecture/system-architecture.png)
 
@@ -59,6 +63,53 @@ The application communicates with Docker through the Docker SDK and checks node 
 6. The recovery process detects the failed container and attempts to restart it.
 7. Health checks verify whether the recovered node is operational.
 8. Events and system states are persisted in SQLite.
+9. Prometheus collects application metrics.
+10. Grafana displays monitoring information through dashboards.
+
+## Monitoring and Observability
+
+ResilienceLab integrates Prometheus and Grafana for application and cluster monitoring.
+
+### Prometheus
+
+Prometheus scrapes metrics from the FastAPI application's `/metrics` endpoint every 5 seconds.
+
+Implemented metrics include:
+
+| Metric | Type | Description |
+|---|---|---|
+| `resiliencelab_http_requests_total` | Counter | Total HTTP requests |
+| `resiliencelab_http_request_duration_seconds` | Histogram | HTTP request duration |
+| `resiliencelab_active_nodes` | Gauge | Number of healthy Docker nodes |
+| `resiliencelab_total_nodes` | Gauge | Total configured Docker nodes |
+
+### Grafana Dashboard
+
+Dashboard: **ResilienceLab Cluster & Request Analytics**
+
+The combined dashboard contains seven panels:
+
+1. HTTP Request Rate
+2. Failed Nodes
+3. Healthy Nodes
+4. Total Nodes
+5. Request Duration (Latency)
+6. Total HTTP Requests
+7. Active Nodes
+
+### Monitoring URLs
+
+- Prometheus: http://localhost:9090
+- Prometheus Targets: http://localhost:9090/targets
+- Grafana: http://localhost:3000
+- Application Metrics: http://localhost:8000/metrics
+
+**Local Grafana credentials:**
+
+- Username: `admin`
+- Password: `resiliencelab123`
+
+These are development credentials. Change them before using the configuration in a shared or public environment.
 
 ## Project Demo
 
@@ -66,7 +117,7 @@ Watch the ResilienceLab demonstration:
 
 [![ResilienceLab Project Demo](https://img.youtube.com/vi/Pv6WM5nrrmQ/hqdefault.jpg)](https://youtu.be/Pv6WM5nrrmQ)
 
-▶ **[Watch the Full Demo on YouTube](https://youtu.be/Pv6WM5nrrmQ)**
+**[Watch the Full Demo on YouTube](https://youtu.be/Pv6WM5nrrmQ)**
 
 The demonstration covers:
 
@@ -114,7 +165,6 @@ ResilienceLab/
 │   ├── demo/
 │   └── screenshots/
 ├── data/
-│   └── resilience.db
 ├── docs/
 │   ├── PROJECT_OVERVIEW.md
 │   ├── SYSTEM_ARCHITECTURE.md
@@ -125,6 +175,9 @@ ResilienceLab/
 │   ├── REAL_WORLD_USE_CASES.md
 │   ├── DEVELOPMENT_ROADMAP.md
 │   └── DEPLOYMENT_GUIDE.md
+├── monitoring/
+│   └── prometheus/
+│       └── prometheus.yml
 ├── nodes/
 │   └── node_server.py
 ├── static/
@@ -143,8 +196,9 @@ ResilienceLab/
 
 ### Prerequisites
 
-- Docker Desktop
-- Docker Engine with Docker Compose support
+- Windows, Linux, or macOS
+- Docker Desktop or Docker Engine
+- Docker Compose
 - Git
 
 ### 1. Clone the repository
@@ -154,17 +208,19 @@ git clone https://github.com/tanupriyasingh07/ResilienceLab.git
 cd ResilienceLab
 ```
 
-### 2. Build and start the main application
+### 2. Build and start the application and monitoring stack
 
 ```bash
 docker compose up -d --build
 ```
 
-This builds the main application image and starts the FastAPI container.
+This starts:
+
+- FastAPI application
+- Prometheus
+- Grafana
 
 ### 3. Build the server node image
-
-Open a terminal in the project directory:
 
 ```bash
 docker build -f Dockerfile.node -t resiliencelab-node:v1 .
@@ -182,23 +238,37 @@ docker run -d --name resiliencelab-node-2 --network resiliencelab_default -e NOD
 docker run -d --name resiliencelab-node-3 --network resiliencelab_default -e NODE_ID=node-3 resiliencelab-node:v1
 ```
 
-### 5. Verify the containers
+### 5. Verify containers
 
 ```bash
 docker ps
 ```
 
-You should see the main application container and three server node containers running.
+You should see the application, monitoring services, and three server node containers running.
 
-### 6. Access the application
+### 6. Configure Grafana
 
-- **Dashboard:** http://localhost:8000/
-- **API documentation:** http://localhost:8000/docs
-- **Application health:** http://localhost:8000/api/health
-- **Node status:** http://localhost:8000/api/nodes
-- **Cluster health:** http://localhost:8000/api/cluster-health
+1. Open http://localhost:3000.
+2. Log in using the local development credentials.
+3. Add a Prometheus data source.
+4. Set the Prometheus URL to `http://prometheus:9090`.
+5. Save and test the data source.
+6. Open the ResilienceLab monitoring dashboard.
 
-**Note:** The main application container mounts the Docker socket to manage node containers. This setup is intended for local development and experimentation. Do not expose the Docker socket or this configuration to an untrusted network.
+### 7. Access the application
+
+| Service | URL |
+|---|---|
+| Application Dashboard | http://localhost:8000/ |
+| API Documentation | http://localhost:8000/docs |
+| Application Health | http://localhost:8000/api/health |
+| Node Status | http://localhost:8000/api/nodes |
+| Cluster Health | http://localhost:8000/api/cluster-health |
+| Prometheus Metrics | http://localhost:8000/metrics |
+| Prometheus | http://localhost:9090 |
+| Grafana | http://localhost:3000 |
+
+**Security note:** The main application mounts the Docker socket to manage node containers. Docker socket access can provide extensive host-level control. This setup is intended for local development and experimentation. Do not expose it to an untrusted network.
 
 ## API Reference
 
@@ -215,26 +285,42 @@ You should see the main application container and three server node containers r
 | `/api/cluster-health` | GET | View cluster health |
 | `/api/system` | GET | View system metrics |
 | `/api/logs` | GET | Retrieve event logs |
+| `/metrics` | GET | Expose Prometheus metrics |
 
 Interactive API documentation is available at `/docs`.
 
 ## Testing and Validation
 
-The following core workflows have been implemented and tested:
+The following workflows have been tested locally with three independent Docker server nodes.
 
 | Test | Result |
 |---|---|
-| Docker node health checks | Passed |
+| Docker container startup | Passed |
+| Application health check | Passed |
+| Three-node cluster health | Passed |
+| Docker node failure simulation | Passed |
+| Cluster failure detection | Passed |
 | Round-robin request distribution | Passed |
 | Failure-aware request routing | Passed |
-| Docker container failure detection | Passed |
 | Automatic node recovery | Passed |
-| Manual node recovery | Passed |
-| Cluster health monitoring | Passed |
-| SQLite state persistence | Passed |
-| Restart counter validation | Passed |
+| Node restart status verification | Passed |
+| SQLite state persistence | Previously tested |
+| Prometheus target scraping | Passed |
+| HTTP request metrics collection | Passed |
+| Request duration metrics | Passed |
+| Grafana dashboard integration | Passed |
+| Seven-panel monitoring dashboard | Passed |
 
-The project has been tested locally with three independent Docker server nodes.
+### Observed Failure-Recovery Test
+
+During local validation:
+
+- Three nodes initially reported healthy.
+- Node 2 was stopped through the application API.
+- Cluster health changed to 2 healthy nodes and 1 failed node.
+- Four subsequent requests were routed alternately between Node 1 and Node 3.
+- Node 2 automatically recovered after the configured recovery interval.
+- All three nodes subsequently reported healthy.
 
 ## Current Scope and Limitations
 
@@ -242,22 +328,22 @@ ResilienceLab is currently a local distributed systems experimentation platform,
 
 - The main monitoring application runs as a single FastAPI instance.
 - Server nodes run as independent Docker containers.
-- Docker management currently depends on access to the Docker socket.
+- Docker management depends on access to the Docker socket.
 - Service failure simulation is separate from the actual Docker node failure mechanism.
 - The current load balancer implements round-robin selection with health-aware routing.
+- Cluster node metrics are refreshed when the cluster-health endpoint is queried.
 - Recovery and health checks use configurable timing policies.
-- The project has not yet been validated under large-scale production workloads.
+- The project has not been validated under large-scale production workloads.
 
 ## Future Development
 
-Planned areas of development include:
+Potential areas for future development include:
 
-- Prometheus-based metrics collection.
-- Grafana observability dashboards.
-- Latency, throughput, and recovery-time analysis.
+- Continuous background refresh of cluster metrics.
 - Advanced load-balancing strategies.
 - Circuit breakers, retries, and timeout policies.
 - Configurable fault injection and stress testing.
+- Recovery-time and throughput benchmarking.
 - PostgreSQL-based persistent storage.
 - Distributed messaging with Kafka or RabbitMQ where appropriate.
 - Advanced deployment and orchestration experiments.

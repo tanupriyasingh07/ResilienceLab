@@ -12,6 +12,8 @@ import docker
 import json
 import urllib.request
 import urllib.error
+from prometheus_client import Counter, Gauge, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from fastapi.responses import Response
 
 
 DB = "data/resilience.db"
@@ -285,6 +287,35 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="ResilienceLab", version="1.0", lifespan=lifespan)
+# Prometheus Metrics
+
+HTTP_REQUESTS = Counter(
+    "resiliencelab_http_requests_total",
+    "Total HTTP requests",
+    ["method", "endpoint", "status"]
+)
+
+HTTP_REQUEST_DURATION = Histogram(
+    "resiliencelab_http_request_duration_seconds",
+    "HTTP request duration"
+)
+
+ACTIVE_NODES = Gauge(
+    "resiliencelab_active_nodes",
+    "Number of healthy Docker nodes"
+)
+
+TOTAL_NODES = Gauge(
+    "resiliencelab_total_nodes",
+    "Total configured Docker nodes"
+)
+@app.get("/metrics")
+def prometheus_metrics():
+    return Response(
+        content=generate_latest(),
+        media_type=CONTENT_TYPE_LATEST
+    )
+
 @app.get("/")
 def dashboard():
     return FileResponse("static/index.html")
@@ -295,6 +326,27 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
+@app.middleware("http")
+async def track_requests(request, call_next):
+    start_time = time.perf_counter()
+
+    response = await call_next(request)
+
+    duration = time.perf_counter() - start_time
+
+    if request.url.path != "/metrics":
+        route = request.scope.get("route")
+        endpoint = route.path if route else request.url.path
+
+        HTTP_REQUESTS.labels(
+            method=request.method,
+            endpoint=endpoint,
+            status=str(response.status_code)
+        ).inc()
+
+        HTTP_REQUEST_DURATION.observe(duration)
+
+    return response
 
 @app.get("/api/health")
 def health():
@@ -345,8 +397,15 @@ def cluster_health():
     }
 
     total = len(statuses)
-    healthy = sum(1 for status in statuses.values() if status == "healthy")
+    healthy = sum(
+        1 for status in statuses.values()
+        if status == "healthy"
+    )
     failed = total - healthy
+
+    # Update Prometheus metrics
+    TOTAL_NODES.set(total)
+    ACTIVE_NODES.set(healthy)
 
     return {
         "total_nodes": total,
