@@ -245,12 +245,26 @@ async def auto_recovery():
 
                     if container.status != "running":
                         await asyncio.to_thread(container.start)
+                        recovery_action = "started"
+                    else:
+                        await asyncio.to_thread(container.restart)
+                        recovery_action = "restarted"
+
+                    # Avoid repeatedly restarting every 2 seconds.
+                    node["failed_at"] = time.time()
+
+                    log_event(
+                        node_id,
+                        f"Automatic recovery {recovery_action} attempted"
+                    )
+                    save_states()
 
                 except docker.errors.DockerException as error:
                     log_event(
                         node_id,
                         f"Automatic recovery failed: {error}"
                     )
+
 
         await asyncio.sleep(2)
 
