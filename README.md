@@ -113,20 +113,31 @@ These are development credentials. Change them before using the configuration in
 
 ## Project Demo
 
-Watch the ResilienceLab demonstration:
+Watch the ResilienceLab demonstrations:
 
-[![ResilienceLab Project Demo](https://img.youtube.com/vi/Pv6WM5nrrmQ/hqdefault.jpg)](https://youtu.be/Pv6WM5nrrmQ)
+### 1. Original Project Walkthrough
 
-**[Watch the Full Demo on YouTube](https://youtu.be/Pv6WM5nrrmQ)**
+[![ResilienceLab Original Demo](https://img.youtube.com/vi/Pv6WM5nrrmQ/hqdefault.jpg)](https://youtu.be/Pv6WM5nrrmQ)
 
-The demonstration covers:
+[Watch the Original Demo on YouTube](https://youtu.be/Pv6WM5nrrmQ)
 
-- Live system monitoring
-- Service failure simulation
-- Node health monitoring
-- Round-robin load balancing
+### 2. Failure Detection & Automatic Recovery
+
+[![ResilienceLab Failure Recovery Demo](https://img.youtube.com/vi/iC2CTB5dyU4/hqdefault.jpg)](https://youtu.be/iC2CTB5dyU4)
+
+[Watch the Failure Recovery Demo on YouTube](https://youtu.be/iC2CTB5dyU4)
+
+The demonstrations cover:
+
+- Live system dashboard and monitoring
+- Docker-based server nodes
+- Service and node failure simulation
+- Cluster health monitoring
+- Failure-aware request routing
+- Automatic node recovery
+- Prometheus metrics collection
+- Grafana monitoring dashboard
 - Event logging
-- Dashboard monitoring
 
 *Video visibility: Unlisted.*
 
