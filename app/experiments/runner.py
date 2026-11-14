@@ -192,7 +192,25 @@ class ExperimentRunner:
                     },
                 },
             )
+        except asyncio.CancelledError:
+            duration = time.perf_counter() - started_clock
 
+            await asyncio.to_thread(
+                self.repository.update,
+                experiment_id,
+                {
+                    "status": "failed",
+                    "completed_at": time.time(),
+                    "duration_seconds": duration,
+                    "outcome": "cancelled",
+                    "error": "Experiment was cancelled",
+                    "result": {
+                        "recovered": False,
+                        "recovery_strategy": strategy,
+                    },
+                },
+            )
+            raise
         except Exception as error:
             duration = time.perf_counter() - started_clock
 

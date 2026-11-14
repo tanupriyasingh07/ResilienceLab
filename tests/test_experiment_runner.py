@@ -225,3 +225,43 @@ async def test_concurrent_experiment_is_rejected():
 
     assert result["status"] == "completed"
     assert len(repository.records) == 1
+
+
+@pytest.mark.anyio
+async def test_cancelled_experiment_is_recorded_and_cancellation_propagates():
+    repository = FakeRepository()
+    manager = FakeRecoveryManager()
+
+    injection_started = asyncio.Event()
+
+    async def inject_failure(node_id):
+        injection_started.set()
+        await asyncio.Event().wait()
+
+    runner = ExperimentRunner(
+        repository,
+        manager,
+        inject_failure,
+        lambda node_id: "healthy",
+    )
+
+    task = asyncio.create_task(
+        runner.run("Cancellation Test", "node-1")
+    )
+
+    await asyncio.wait_for(injection_started.wait(), timeout=2)
+
+    task.cancel()
+
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert len(repository.records) == 1
+
+    experiment = next(iter(repository.records.values()))
+
+    assert experiment["status"] == "failed"
+    assert experiment["outcome"] == "cancelled"
+    assert experiment["completed_at"] is not None
+    assert "cancel" in experiment["error"].lower()
+    assert runner._running is False
