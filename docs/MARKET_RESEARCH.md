@@ -70,33 +70,40 @@ Uptime Kuma is an open-source self-hosted monitoring tool that checks the availa
 
 ## 3. High-Level Comparison
 
-| Capability | ResilienceLab v1 | Prometheus | Grafana | Netdata | Uptime Kuma |
-|---|---|---|---|---|---|
-| Local system metrics | Yes | Via exporters | Via data sources | Yes | Limited |
-| Dashboard | Yes | Basic UI | Yes | Yes | Yes |
-| Event logging | SQLite | Integrated ecosystem | Via data sources | Yes | Monitoring events |
-| Failure simulation | Yes | Not its primary purpose | No | No | No |
-| Simulated automatic recovery | Yes | No | No | No | No |
-| Round-robin routing demo | Yes | No | No | No | No |
-| Production infrastructure monitoring | No | Yes | Yes, with data sources | Yes | Availability-focused |
+| Capability | ResilienceLab v1 | ResilienceLab v2 | Prometheus | Grafana | Netdata | Uptime Kuma |
+|---|---|---|---|---|---|---|
+| Local system metrics | Yes | Yes | Via exporters | Via data sources | Yes | Limited |
+| Dashboard | Yes | Yes | Basic UI | Yes | Yes | Yes |
+| Event logging | SQLite | SQLite | Integrated ecosystem | Via data sources | Yes | Monitoring events |
+| Failure simulation | Yes | Yes | Not its primary purpose | No | No | No |
+| Docker node failure injection | Yes | Yes | No | No | No | No |
+| Automatic node recovery | Yes | Yes | No | No | No | No |
+| Retry and circuit breaker management | No | Yes | No | No | No | No |
+| Experiment history and benchmarks | No | Yes | No | No | No | No |
+| Experiment comparison and reports | No | Yes | No | No | No | No |
+| Production infrastructure monitoring | No | No | Yes | Yes, with data sources | Yes | Availability-focused |
 
 *This is a high-level comparison of primary capabilities, not a complete feature-by-feature evaluation.*
 
 ## 4. ResilienceLab's Positioning
 
-ResilienceLab is currently a learning-oriented simulation and demonstration project.
+ResilienceLab is a learning-oriented distributed systems and reliability engineering experimentation platform.
 
-Its purpose is to make selected reliability concepts interactive:
+Version 1.0 introduced Docker node monitoring, failure injection, recovery, and application-level request routing.
 
-- Trigger a component failure.
-- Observe the resulting health-state change.
-- See a simulated recovery.
-- Observe how routing changes when a node becomes unavailable.
-- Inspect the resulting events.
+Version 2.0 extends this foundation with centralized recovery management, retry strategies, circuit breakers, persistent experiment history, sequential benchmarks, experiment comparisons, reports, and recovery observability.
 
-Unlike a conventional metrics dashboard, the current implementation lets users actively trigger controlled failure scenarios in its simulated environment.
+Its purpose is to let users explore reliability workflows in a controlled local environment:
 
-This is a difference in project focus, not a claim that it replaces established monitoring platforms.
+- Trigger actual Docker node failures.
+- Observe node health-state changes.
+- Examine automatic recovery and health verification.
+- Understand retry scheduling and circuit breaker behaviour.
+- Run repeatable experiments and sequential benchmarks.
+- Compare historical outcomes and inspect reports.
+- Monitor recovery metrics through Prometheus and Grafana.
+
+Application-level service simulations remain part of the platform. This is a learning and experimentation environment, not a replacement for established production monitoring or orchestration platforms.
 
 ## 5. Potential Users
 
@@ -112,32 +119,35 @@ The current version is not intended to replace production monitoring, incident m
 
 ## 6. Potential Value
 
-The project brings several concepts into one small environment:
+The project brings several reliability engineering concepts into one local environment:
 
-1. Service and node health-state tracking.
-2. Manual failure simulation.
-3. Timed automatic recovery.
-4. Failure-aware request routing.
-5. Cluster health calculation.
-6. Persistent event logging.
-7. Local system metrics.
+1. Service and Docker node health-state tracking.
+2. Controlled Docker node failure injection.
+3. Automatic node recovery and health verification.
+4. Retry scheduling and backoff strategies.
+5. Circuit breaker state management.
+6. Failure-aware request routing.
+7. Persistent recovery state and experiment history.
+8. Sequential benchmark execution and result aggregation.
+9. Experiment comparison and report generation.
+10. Prometheus recovery metrics and Grafana visualization.
 
-This makes it possible to observe a complete demonstration flow without configuring a real multi-server infrastructure.
+This makes it possible to study failure and recovery workflows without configuring a production multi-server infrastructure.
 
 ## 7. Market Opportunity and Product Direction
 
-A future version could become a more capable reliability-learning and testing platform.
+ResilienceLab currently focuses on local reliability experimentation and developer education.
 
-Potential areas of development include:
+Potential future development could extend the platform through:
 
-- Docker-based service environments.
-- Independent service processes.
-- Configurable failure scenarios.
 - Additional load-balancing algorithms.
-- Recovery policies and health checks.
-- Historical metrics and visualizations.
-- Integration with Prometheus and Grafana.
-- Multi-user access and remote deployment.
+- More configurable failure scenarios and recovery policies.
+- Exportable experiment reports and reusable experiment configurations.
+- PostgreSQL-based persistence for larger deployments.
+- Distributed messaging integrations where appropriate.
+- Authentication and multi-user access.
+- Secure cloud deployment and multi-instance monitoring.
+- Improved installation workflows and external developer contributions.
 
 These capabilities would need implementation and validation before the project could be positioned as a practical tool for engineering teams.
 
@@ -154,6 +164,8 @@ The following official websites provide product information and documentation:
 
 The infrastructure monitoring ecosystem already contains mature tools for metrics, dashboards, and availability monitoring.
 
-ResilienceLab currently occupies a narrower educational space: an interactive local environment for demonstrating failure, recovery, cluster health, and basic routing behaviour.
+ResilienceLab occupies a narrower educational and experimental space: a local environment for studying Docker node failures, recovery coordination, retry policies, circuit breakers, request routing, and reproducible reliability experiments.
 
-Its future value will depend on expanding beyond simulation, integrating real services, and validating the system through practical testing.
+Version 2.0 extends the original monitoring platform with experiment history, benchmark execution, comparison, reporting, and recovery observability.
+
+Its future value will depend on broader scenario support, stronger deployment capabilities, and validation beyond the local development environment.

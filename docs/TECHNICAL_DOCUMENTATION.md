@@ -384,18 +384,99 @@ The main application mounts the local Docker socket to manage containers. This p
 - Simulated application services are not independently deployed containers.
 - The routing mechanism is application-level request forwarding, not a production-grade external load balancer.
 - System metrics represent the host machine rather than individual node resources.
-- Cluster node metrics currently refresh when the cluster-health endpoint is queried.
-- Per-node recovery operations do not yet have dedicated concurrency locks.
+- Cluster node metrics refresh when the cluster-health endpoint is queried.
+- SQLite is used for local persistence.
 - Production-scale performance, resilience, and security have not been validated.
 
 ## 19. Future Engineering Work
 
-Potential improvements include:
+Potential future improvements include:
 
 - Periodic background refresh of cluster health metrics.
-- Per-node recovery synchronization and concurrency safeguards.
-- Automated integration and fault-injection tests.
 - Per-node resource monitoring.
-- Load and stress testing.
-- Recovery latency and throughput benchmarking.
-- More robust distributed deployment and orchestration.
+- Weighted and least-connections routing algorithms.
+- Configurable health-check intervals and reusable failure scenarios.
+- PostgreSQL-based persistence for larger deployments.
+- Distributed messaging and advanced orchestration experiments.
+- Authentication, authorization, and multi-user access.
+- Secure public deployment and production-scale testing.
+
+## 20. Version 2.0 Technical Implementation
+
+Version 2.0 extends the original platform with reliability management, recovery coordination, experiment execution, and additional observability.
+
+### 20.1 Recovery Management
+
+The recovery subsystem is organized into the following components:
+
+- **RecoveryManager:** Maintains recovery state, retry scheduling, retry limits, strategy selection, and circuit breaker coordination.
+- **RecoveryExecutor:** Executes one authorized recovery callback without owning retry scheduling or recovery policy.
+- **Retry Strategies:** Supports fixed retry and exponential backoff.
+- **Circuit Breaker:** Supports CLOSED, OPEN, and HALF_OPEN states.
+- **Recovery Coordination:** Uses per-node asynchronous locks to protect recovery operations.
+- **Persistence:** Stores recovery state so it can be restored when the application restarts.
+
+The automatic recovery workflow detects failed nodes, checks recovery eligibility, executes the recovery operation, verifies node health, and records the outcome.
+
+### 20.2 Experiment Subsystem
+
+The experiment subsystem supports repeatable failure and recovery experiments.
+
+- **ExperimentRepository:** Stores experiment records and retrieves historical results from SQLite.
+- **ExperimentRunner:** Injects a controlled node failure and observes the recovery outcome.
+- **BenchmarkRunner:** Executes trials sequentially, groups them under a shared run ID, and aggregates results.
+- **Comparison:** Compares between two and ten experiment records.
+- **Reports:** Generates individual experiment reports and benchmark-group reports.
+
+Experiment records include execution status, target node, recovery strategy, timestamps, duration, configuration, and result information.
+
+### 20.3 Experiment API Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/api/experiments` | Run an experiment |
+| GET | `/api/experiments` | List experiment history |
+| GET | `/api/experiments/{experiment_id}` | Retrieve an experiment |
+| POST | `/api/experiments/benchmark` | Execute sequential benchmark trials |
+| GET | `/api/experiments/compare?ids=id1,id2` | Compare experiment records |
+| GET | `/api/experiments/{experiment_id}/report` | Generate an individual report |
+| GET | `/api/experiments/groups/{run_group_id}/report` | Generate a benchmark-group report |
+
+### 20.4 Recovery Observability
+
+V2 exposes recovery-related Prometheus metrics through the `/metrics` endpoint, including:
+
+- Recovery attempt counters.
+- Recovery result counters.
+- Recovery duration histogram.
+- Recovery retry counts.
+- Consecutive recovery failure counts.
+- Circuit breaker state gauges.
+
+A manually configured nine-panel Grafana dashboard provides a reliability overview.
+
+### 20.5 Isolated V2 Deployment
+
+V2 uses a separate Compose configuration named `compose.v2.yaml`.
+
+Start the V2 stack using:
+
+```powershell
+docker compose -p resiliencelab-v2 -f compose.v2.yaml up -d --build
+```
+
+The isolated deployment uses:
+
+| Component | Host Port |
+|---|---:|
+| FastAPI application | 8001 |
+| Prometheus | 9091 |
+| Grafana | 3001 |
+
+V2 uses a separate Docker network and persistent data volume to keep its deployment isolated from V1.
+
+### 20.6 Validation
+
+The recorded full automated test run completed with 141 passing tests. Local Docker integration experiments also verified node failure injection, automatic recovery, experiment execution, benchmark aggregation, comparison, reporting, and recovery metrics.
+
+These results describe local validation only. Production-scale performance, public deployment, and production security have not been established.

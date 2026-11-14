@@ -72,27 +72,35 @@ ResilienceLab is intended for:
 
 ## 7. Current System Scope
 
-The current release is a local simulation environment.
+ResilienceLab is a local distributed systems and reliability engineering experimentation platform.
 
-Services and nodes are represented within a single FastAPI application. The load balancer demonstrates request-routing logic rather than distributing real network traffic across independent servers.
+The system manages three independent Docker-based worker nodes through a central FastAPI application. Application-level services remain simulated within the backend, while Docker nodes run as separate containers.
 
-Automatic recovery applies to simulated components and does not restart external services or machines.
+The platform supports:
 
-System metrics represent the machine running the application.
+- Docker node health monitoring and controlled failure injection.
+- Automatic recovery using centralized recovery management.
+- Fixed retry and exponential backoff strategies.
+- Circuit breaker states and recovery coordination.
+- Persistent recovery state and experiment history.
+- Prometheus metrics and Grafana monitoring.
+- Sequential reliability benchmarks, experiment comparisons, and reports.
+
+The platform is designed for local experimentation and learning. It is not a production-grade orchestration system, and production-scale performance and security have not been established.
 
 ## 8. Future Direction
 
-The project is planned to evolve toward a more realistic infrastructure reliability platform through:
+Future development aims to extend ResilienceLab into a more configurable and extensible reliability engineering platform through:
 
-- Independent service and node processes.
-- Docker-based service deployment and failure simulation.
-- Configurable health checks and recovery policies.
-- Additional load-balancing algorithms.
-- Historical metrics and performance analysis.
-- Monitoring and alerting integrations.
-- Cloud deployment and multi-user access.
+- Weighted and least-connections load-balancing algorithms.
+- Configurable health-check intervals and failure scenarios.
+- Exportable experiment reports and reusable experiment configurations.
+- Interactive architecture visualizations.
+- Authentication, authorization, and multi-user access.
+- Secure public deployment and production-grade storage.
+- Improved installation workflows and external developer contributions.
 
-These are planned enhancements and are not part of the current release.
+These capabilities remain planned and will be marked complete only after implementation and validation.
 
 ## 9. Repository
 

@@ -328,21 +328,74 @@ The current implementation is a local distributed systems experimentation platfo
 - Large-scale distributed deployment and production workloads have not yet been validated.
 - Advanced concurrency, fault-tolerance, and stress-testing scenarios remain areas for further improvement.
 
-## 10. Planned Architecture Improvements
+## 10. Version 2.0 Architecture
+
+Version 2.0 extends the original architecture with centralized reliability management, recovery coordination, observability, and experiment execution.
+
+### 10.1 Recovery Architecture
+
+The V2 recovery architecture consists of:
+
+- **RecoveryManager:** Coordinates recovery state, retry scheduling, retry limits, and circuit breaker decisions.
+- **RecoveryExecutor:** Executes an authorized recovery operation through a recovery callback.
+- **Retry Strategies:** Supports fixed retry and exponential backoff strategies.
+- **Circuit Breaker:** Coordinates recovery attempts through CLOSED, OPEN, and HALF_OPEN states.
+- **Automatic Recovery:** Detects failed Docker nodes, executes recovery operations, verifies node health, and persists updated recovery state.
+
+### 10.2 Experiment and Benchmark Architecture
+
+The experiment subsystem provides reproducible reliability testing.
+
+- **ExperimentRepository:** Persists experiment records and results in SQLite.
+- **ExperimentRunner:** Executes controlled node failure and observes recovery outcomes.
+- **BenchmarkRunner:** Runs sequential experiment trials and aggregates results.
+- **Comparison and Reports:** Supports experiment comparison and individual or benchmark-group reports.
+
+### 10.3 V2 Container Deployment
+
+Version 2.0 uses a separate Docker Compose configuration:
+
+`compose.v2.yaml`
+
+The V2 deployment runs under the isolated Compose project `resiliencelab-v2`, with separate application, node, Prometheus, and Grafana containers.
+
+| Component | Host Port |
+|---|---:|
+| FastAPI application | 8001 |
+| Prometheus | 9091 |
+| Grafana | 3001 |
+
+V2 uses a separate Docker network and persistent data volume to isolate its deployment from the original V1 stack.
+
+### 10.4 Observability
+
+V2 extends Prometheus instrumentation with recovery-related metrics, including:
+
+- Recovery attempts and results.
+- Recovery duration.
+- Retry counts.
+- Consecutive recovery failures.
+- Circuit breaker state.
+
+Grafana provides a manually configured nine-panel reliability overview dashboard.
+
+### 10.5 Validation Scope
+
+V2 has been validated through automated tests and local Docker integration experiments. The recorded full automated test run completed with 141 passing tests.
+
+These results demonstrate local validation, not production readiness or production-scale performance.
+
+## 11. Planned Architecture Improvements
 
 Future development may introduce:
 
-- Prometheus-based metrics collection.
-- Grafana observability dashboards.
-- Latency and throughput measurements.
-- Advanced load-balancing algorithms.
-- Circuit breakers, retries, and timeout policies.
-- Configurable fault injection.
-- Stress testing and recovery-time analysis.
-- PostgreSQL-based persistence.
+- Weighted and least-connections load-balancing algorithms.
+- Configurable health-check intervals and reusable failure scenarios.
+- PostgreSQL-based persistence for larger deployments.
 - Distributed messaging through Kafka or RabbitMQ where appropriate.
+- Exportable experiment reports and advanced performance analysis.
+- Authentication, authorization, and multi-user access.
+- Secure cloud deployment and multi-instance monitoring.
 - Advanced container orchestration experiments.
-- Cloud deployment and multi-instance monitoring.
 
-These are planned enhancements and are not part of the current implementation.
-```
+These capabilities remain planned and will be marked complete only after implementation and validation.

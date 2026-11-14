@@ -218,38 +218,105 @@ ResilienceLab/
 ├── app/
 │   ├── __init__.py
 │   ├── main.py
-│   └── main_backup.py
+│   ├── main_backup.py
+│   ├── experiments/
+│   └── recovery/
 ├── assets/
 │   ├── architecture/
 │   ├── demo/
 │   └── screenshots/
 ├── data/
 ├── docs/
-│   ├── PROJECT_OVERVIEW.md
-│   ├── SYSTEM_ARCHITECTURE.md
-│   ├── TECHNICAL_DOCUMENTATION.md
-│   ├── API_REFERENCE.md
-│   ├── TESTING.md
-│   ├── MARKET_RESEARCH.md
-│   ├── REAL_WORLD_USE_CASES.md
-│   ├── DEVELOPMENT_ROADMAP.md
-│   └── DEPLOYMENT_GUIDE.md
 ├── monitoring/
 │   └── prometheus/
-│       └── prometheus.yml
+│       ├── prometheus.yml
+│       └── v2/
+│           └── prometheus.yml
 ├── nodes/
 │   └── node_server.py
 ├── static/
 │   └── index.html
+├── tests/
 ├── .dockerignore
 ├── .gitignore
 ├── Dockerfile
 ├── Dockerfile.node
 ├── compose.yaml
+├── compose.v2.yaml
 ├── requirements.txt
-├── README.md
-└── LICENSE
+└── README.md
 ```
+
+## Version 2.0 — Reliability Engineering and Experimentation
+
+Version 2.0 extends the original monitoring platform into a reliability engineering experimentation environment. It introduces centralized recovery management, controlled failure experiments, benchmark execution, historical results, and recovery observability.
+
+### V2 Key Features
+
+- **Centralized Recovery Manager:** Coordinates recovery state, retry scheduling, retry limits, and circuit breaker decisions.
+- **Recovery Executor:** Executes authorized recovery operations.
+- **Retry Strategies:** Supports fixed retry and exponential backoff.
+- **Circuit Breaker:** Implements CLOSED, OPEN, and HALF_OPEN states.
+- **Automatic Recovery:** Detects failed Docker nodes, attempts recovery, and verifies node health.
+- **Recovery Persistence:** Persists recovery state and experiment history using SQLite.
+- **Concurrency Protection:** Uses per-node recovery locks.
+- **Experiment Runner:** Executes controlled node failure and recovery experiments.
+- **Benchmark Runner:** Runs sequential trials and aggregates experiment results.
+- **Experiment Comparison:** Compares historical experiment records.
+- **Experiment Reports:** Generates individual experiment and benchmark-group reports.
+- **Recovery Observability:** Exposes recovery metrics through Prometheus.
+- **Grafana Reliability Dashboard:** Provides a manually configured dashboard with nine reliability panels.
+
+### V2 Deployment
+
+V2 runs independently from the original V1 deployment using `compose.v2.yaml`.
+
+Start the V2 stack from the repository root:
+
+```powershell
+docker compose -p resiliencelab-v2 -f compose.v2.yaml up -d --build
+```
+
+V2 uses a separate Docker network and persistent data volume to isolate it from V1.
+
+| Service | URL |
+|---|---|
+| V2 Application | http://localhost:8001/ |
+| V2 API Documentation | http://localhost:8001/docs |
+| V2 Application Health | http://localhost:8001/api/health |
+| V2 Node Status | http://localhost:8001/api/nodes |
+| V2 Prometheus Metrics | http://localhost:8001/metrics |
+| V2 Prometheus | http://localhost:9091 |
+| V2 Grafana | http://localhost:3001 |
+
+### V2 Experiment API
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/api/experiments` | Execute an experiment |
+| GET | `/api/experiments` | List experiment history |
+| GET | `/api/experiments/{experiment_id}` | Retrieve an experiment |
+| POST | `/api/experiments/benchmark` | Run sequential benchmark trials |
+| GET | `/api/experiments/compare?ids=id1,id2` | Compare experiments |
+| GET | `/api/experiments/{experiment_id}/report` | Generate an individual report |
+| GET | `/api/experiments/groups/{run_group_id}/report` | Generate a benchmark-group report |
+
+### V2 Validation
+
+The recorded full automated test run completed with **141 passing tests**.
+
+Local Docker integration experiments also verified:
+
+- Controlled Docker node failure injection.
+- Automatic node recovery and health verification.
+- Recovery-related Prometheus metrics.
+- Experiment execution and persistence.
+- Sequential benchmark execution and aggregation.
+- Experiment comparison and report generation.
+
+These results establish local validation, not production readiness or production-scale performance.
+
+---
 
 ## Getting Started
 
@@ -399,15 +466,18 @@ ResilienceLab is currently a local distributed systems experimentation platform,
 Potential areas for future development include:
 
 - Continuous background refresh of cluster metrics.
-- Advanced load-balancing strategies.
-- Circuit breakers, retries, and timeout policies.
-- Configurable fault injection and stress testing.
-- Recovery-time and throughput benchmarking.
+- Weighted and least-connections load-balancing strategies.
+- Configurable health-check intervals and reusable failure scenarios.
+- Exportable experiment reports and custom service configurations.
+- Authentication, authorization, and multi-user access.
 - PostgreSQL-based persistent storage.
 - Distributed messaging with Kafka or RabbitMQ where appropriate.
 - Advanced deployment and orchestration experiments.
 
-These are future development goals, not features of the current release.
+Retries, circuit breakers, controlled failure experiments, benchmarking,
+experiment comparison, and recovery reports are implemented in V2.
+
+These remaining items are future development goals, not features of the current V2 implementation.
 
 ## Documentation
 
