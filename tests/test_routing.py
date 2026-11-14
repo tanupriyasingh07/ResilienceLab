@@ -84,3 +84,58 @@ def test_routing_returns_503_when_all_nodes_fail(client, monkeypatch):
 
     assert response.status_code == 503
     assert "No healthy servers" in response.json()["detail"]
+
+
+def test_routing_failure_updates_node_state(client, monkeypatch):
+    monkeypatch.setattr(
+        main,
+        "get_docker_node_status",
+        lambda node_id: "failed"
+    )
+
+    def failed_request(request, timeout=None):
+        raise ConnectionError("Node connection failed")
+
+    monkeypatch.setattr(
+        main.urllib.request,
+        "urlopen",
+        failed_request
+    )
+
+    response = client.post("/api/route")
+
+    assert response.status_code == 503
+
+    failed_nodes = [
+        node for node in main.nodes.values()
+        if node["status"] == "failed"
+    ]
+
+    assert len(failed_nodes) == 3
+
+    for node in failed_nodes:
+        assert node["failed_at"] is not None
+
+def test_routing_initializes_missing_failed_at(client, monkeypatch):
+    import time
+
+    node = main.nodes["node-1"]
+    node["status"] = "failed"
+    node["failed_at"] = None
+
+    monkeypatch.setattr(
+        main,
+        "get_docker_node_status",
+        lambda node_id: "failed"
+    )
+
+    before = time.time()
+
+    response = client.post("/api/route")
+
+    after = time.time()
+
+    assert response.status_code == 503
+    assert node["status"] == "failed"
+    assert node["failed_at"] is not None
+    assert before <= node["failed_at"] <= after

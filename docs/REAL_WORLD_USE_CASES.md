@@ -18,14 +18,14 @@ If one service becomes unavailable, other services may still be operational.
 
 ### How ResilienceLab Relates
 
-The current simulation represents multiple services and allows individual services to be marked as failed or recovered.
+The platform includes application-level service simulations and a separate Docker-based node environment. V2 adds centralized recovery coordination, retry policies, circuit breakers, and persistent recovery state.
 
 ### Potential Real-World Extension
 
-- Run each service independently.
-- Add health-check endpoints.
-- Detect actual service unavailability.
-- Apply retry and timeout policies.
+- Run each application service independently.
+- Add service-specific health-check endpoints.
+- Apply configurable retry and timeout policies.
+- Integrate service-level recovery workflows.
 - Record service-level failures and recovery times.
 
 **Potential users:** Backend developers and teams working with microservice architectures.
@@ -38,15 +38,17 @@ A web application may run across multiple servers. A server failure can reduce a
 
 ### How ResilienceLab Relates
 
-The project simulates multiple nodes and excludes failed nodes from round-robin request routing.
+ResilienceLab manages three independent Docker worker nodes. Users can trigger actual container failures, observe node health changes, and verify automatic recovery. Failure-aware request routing excludes unhealthy nodes.
+
+V2 additionally coordinates recovery through retry scheduling, circuit breakers, and per-node concurrency protection.
 
 ### Potential Real-World Extension
 
-- Connect to independent server instances.
-- Collect node health information.
-- Route traffic through a real load balancer.
-- Detect unavailable instances.
-- Support configurable health-check policies.
+- Connect to larger independent server environments.
+- Add configurable health-check policies.
+- Integrate a production network-level load balancer.
+- Extend node monitoring and resource visibility.
+- Evaluate recovery behaviour under larger workloads.
 
 **Potential users:** Infrastructure engineers and backend developers.
 
@@ -60,15 +62,17 @@ Observing these behaviours interactively can make the concepts easier to underst
 
 ### How ResilienceLab Relates
 
-The dashboard allows users to trigger failures and observe the resulting changes in health status, routing, and event logs.
+The platform lets users trigger Docker node failures and observe health changes, request routing, and automatic recovery.
+
+V2 also supports reproducible experiments, sequential benchmark trials, historical results, experiment comparisons, and reports.
 
 ### Potential Real-World Extension
 
 - Add guided experiments.
 - Provide configurable failure durations.
-- Visualize request distribution.
-- Compare different routing algorithms.
-- Generate experiment reports.
+- Visualize request distribution and recovery timelines.
+- Compare additional routing and recovery strategies.
+- Export experiment reports.
 
 **Potential users:** Computer science students, educators, and interview candidates.
 
@@ -104,15 +108,15 @@ Controlled failure testing can reveal weaknesses in recovery, routing, and error
 
 ### How ResilienceLab Relates
 
-The current project provides manual failure triggers and automatic recovery for simulated components.
+The platform supports controlled Docker node failure injection and automatic recovery. V2 adds retry strategies, circuit breaker coordination, persistent experiment records, sequential benchmarks, comparisons, and reports.
 
 ### Potential Real-World Extension
 
-- Introduce configurable failure scenarios.
-- Support container-based testing.
-- Measure recovery duration.
-- Compare system behaviour under different failure conditions.
-- Export test results.
+- Introduce more configurable failure scenarios.
+- Support additional container-based testing environments.
+- Measure recovery duration across larger workloads.
+- Compare behaviour under different recovery policies.
+- Export and share experiment results.
 
 **Potential users:** Developers and reliability engineering teams.
 
@@ -124,15 +128,17 @@ Development teams need visibility into system resource usage and important opera
 
 ### How ResilienceLab Relates
 
-The dashboard displays local CPU, memory, disk usage, uptime, and recorded simulation events.
+The dashboard displays local CPU, memory, disk usage, uptime, and recorded events. Prometheus collects application and recovery metrics, while Grafana provides monitoring and reliability dashboards.
+
+V2 includes recovery attempts, results, duration, retries, consecutive failures, and circuit breaker state metrics.
 
 ### Potential Real-World Extension
 
-- Monitor multiple machines.
-- Store historical metrics.
-- Add threshold-based alerts.
+- Monitor additional machines and services.
+- Store historical metrics at larger scale.
+- Add threshold-based alerting.
 - Integrate external monitoring systems.
-- Provide searchable event history.
+- Provide searchable event and experiment history.
 
 **Potential users:** Developers, system administrators, and infrastructure teams.
 
@@ -149,12 +155,18 @@ The dashboard displays local CPU, memory, disk usage, uptime, and recorded simul
 
 ## 9. Important Scope Boundary
 
-The current ResilienceLab implementation does not monitor or recover real external infrastructure.
+ResilienceLab is currently a local distributed systems and reliability experimentation platform, not a production-grade orchestration system.
 
-All service and node failure scenarios are simulated within one application process. The current use cases describe where the underlying concepts could be applied after further development.
+Docker node failures are actual container-level failures, and the platform attempts automatic recovery and verifies node health. Application-level services remain simulated within the backend.
+
+The platform has been validated through automated tests and local Docker integration experiments. Production-scale performance, public deployment, and production security have not been established.
+
+The use cases described here identify potential applications and extensions; they do not claim that ResilienceLab currently provides a production infrastructure solution.
 
 ## 10. Conclusion
 
-ResilienceLab provides a starting point for exploring reliability engineering concepts through an interactive local simulation.
+ResilienceLab provides an interactive environment for exploring reliability engineering concepts through Docker node failure injection, recovery coordination, retry policies, circuit breakers, request routing, and observability.
 
-Its future development can focus on connecting these concepts to real services, containers, infrastructure monitoring, and controlled testing environments.
+Version 2.0 extends this foundation with persistent experiments, sequential benchmarking, comparisons, and reports.
+
+Future development can focus on broader failure scenarios, additional infrastructure integrations, and validation beyond the local development environment.

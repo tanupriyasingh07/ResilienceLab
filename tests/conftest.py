@@ -1,7 +1,16 @@
 ﻿import asyncio
 import pytest
+from unittest.mock import MagicMock, patch
+import docker
 from fastapi.testclient import TestClient
-import app.main as main
+
+# Prevent Docker daemon connection during unit-test import.
+with patch.object(
+    docker,
+    "from_env",
+    return_value=MagicMock()
+):
+    import app.main as main
 
 
 async def idle_recovery():

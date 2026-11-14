@@ -237,3 +237,132 @@ Event records are persisted in the local SQLite database.
 - System metrics represent the host machine rather than per-node resource metrics.
 - The current implementation has not been validated for production-scale workloads.
 
+
+
+---
+
+# Version 2.0 — Reliability and Experiment APIs
+
+## 13. V2 API Overview
+
+Version 2.0 extends the original monitoring and recovery APIs with controlled reliability experiments, benchmark execution, experiment history, comparisons, and reports.
+
+For the isolated V2 Docker deployment, the base URL is:
+
+```text
+http://localhost:8001
+```
+
+Interactive API documentation:
+
+```text
+http://localhost:8001/docs
+```
+
+## 14. Experiment Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/api/experiments` | Execute a single reliability experiment |
+| GET | `/api/experiments` | List persisted experiments |
+| GET | `/api/experiments/{experiment_id}` | Retrieve an experiment |
+| POST | `/api/experiments/benchmark` | Execute a multi-trial benchmark |
+| GET | `/api/experiments/compare?ids=id1,id2` | Compare experiment results |
+| GET | `/api/experiments/{experiment_id}/report` | Generate an individual experiment report |
+| GET | `/api/experiments/groups/{run_group_id}/report` | Generate a benchmark group report |
+
+### POST `/api/experiments`
+
+Executes a reliability experiment against a selected Docker node.
+
+Request body:
+
+```json
+{
+  "name": "Node Recovery Test",
+  "target_node": "node-1"
+}
+```
+
+The experiment injects a node failure, observes recovery, and records its execution result.
+
+### GET `/api/experiments`
+
+Returns persisted experiment records.
+
+Supports pagination through `limit` and `offset` query parameters.
+
+Example:
+
+```text
+GET /api/experiments?limit=10&offset=0
+```
+
+### GET `/api/experiments/{experiment_id}`
+
+Retrieves an individual experiment using its ID.
+
+### POST `/api/experiments/benchmark`
+
+Executes multiple sequential trials against a selected node.
+
+Request body:
+
+```json
+{
+  "name": "Node Recovery Benchmark",
+  "target_node": "node-1",
+  "trials": 5
+}
+```
+
+The `trials` parameter accepts values from 1 to 20. Benchmark execution stops early if a trial does not complete successfully.
+
+The benchmark response includes trial results and aggregate statistics such as successful trials, failed trials, success rate, and average duration.
+
+### GET `/api/experiments/compare`
+
+Compares between 2 and 10 existing experiment records.
+
+Example:
+
+```text
+GET /api/experiments/compare?ids=experiment-id-1,experiment-id-2
+```
+
+### GET `/api/experiments/{experiment_id}/report`
+
+Returns an individual experiment report containing execution details, recovery information, configuration, and results.
+
+### GET `/api/experiments/groups/{run_group_id}/report`
+
+Returns an aggregated report for experiments belonging to a benchmark run group.
+
+## 15. Experiment Status Values
+
+| Status | Meaning |
+|---|---|
+| `running` | Experiment execution is in progress |
+| `completed` | Experiment completed successfully |
+| `failed` | Experiment execution failed |
+| `timed_out` | Recovery was not completed within the configured timeout |
+
+## 16. V2 Reliability and Recovery Monitoring
+
+The V2 application exposes recovery-related Prometheus metrics through:
+
+```text
+GET /metrics
+```
+
+Implemented metric families include:
+
+- `resiliencelab_recovery_attempts_total`
+- `resiliencelab_recovery_results_total`
+- `resiliencelab_recovery_duration_seconds`
+- `resiliencelab_recovery_retries`
+- `resiliencelab_consecutive_recovery_failures`
+- `resiliencelab_circuit_breaker_state`
+
+These metrics support monitoring of recovery attempts, outcomes, duration, retries, consecutive failures, and circuit-breaker states.
+

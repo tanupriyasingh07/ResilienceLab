@@ -8,7 +8,7 @@ Development will progress in stages, with each stage building on a tested and do
 
 ## 2. Current Status — Version 1.0
 
-<badge color="success">MVP completed</badge>
+**Status: MVP completed**
 
 The current version provides:
 
@@ -188,4 +188,41 @@ Long-term progress will be evaluated through:
 
 ## 12. Roadmap Status
 
-Only Version 1.0 is currently implemented. The remaining phases represent planned development and will be marked complete only after implementation and validation.
+### Version 1.0 — MVP
+**Status: Completed**
+
+The original monitoring platform provides Docker node management, health checks, failure injection, automatic recovery, request routing, SQLite persistence, and monitoring dashboards.
+
+### Version 2.0 — Reliability Hardening and Experimentation
+**Status: Implemented and locally validated**
+
+Completed capabilities:
+
+- Centralized recovery management and recovery execution.
+- Fixed retry and exponential backoff strategies.
+- Circuit breaker with CLOSED, OPEN, and HALF_OPEN states.
+- Controlled failure injection and automatic node recovery.
+- Recovery state persistence and concurrency protection.
+- Prometheus recovery metrics and Grafana reliability dashboard.
+- Persistent experiment history.
+- Sequential benchmark execution and aggregate results.
+- Experiment comparison and individual/group reports.
+- Automated test suite: 141 tests passed in the recorded full test run.
+- Isolated V2 Docker deployment, validated separately from V1.
+
+V2 has been validated through automated tests and local Docker integration experiments. This does not establish production readiness or production-scale performance.
+
+### Future Development — Version 3.0 and Beyond
+
+The following remain planned rather than implemented:
+
+- Weighted and least-connections routing.
+- Configurable health-check intervals and failure scenarios.
+- Exportable experiment reports.
+- Custom service configurations and reusable scenarios.
+- Interactive architecture visualizations.
+- Authentication, authorization, and multi-user access.
+- Secure public deployment and production storage.
+- External developer contributions and installation improvements.
+
+Future phases will be marked complete only after implementation and validation.

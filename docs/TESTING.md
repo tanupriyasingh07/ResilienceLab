@@ -245,7 +245,7 @@ The dashboard successfully displayed cluster statistics, HTTP request traffic, a
 - The routing mechanism demonstrates application-level request forwarding, not production-grade external load balancing.
 - System metrics represent the host machine rather than individual Docker nodes.
 - Cluster node metrics are refreshed when the cluster-health endpoint is queried.
-- Automated test coverage and production-scale performance benchmarks have not yet been implemented.
+- Automated tests are implemented and documented in Section 13. Production-scale performance benchmarks have not been performed.
 
 ## 12. Conclusion
 
@@ -254,3 +254,69 @@ Local testing verified Docker-based node management, health checks, failure inje
 Prometheus metrics collection and Grafana dashboard integration were also successfully validated.
 
 These results demonstrate the core self-healing and monitoring workflows of ResilienceLab in a local experimentation environment. Further automated testing, concurrency validation, benchmarking, and distributed deployment work remain necessary before production use.
+
+---
+
+## 13. Version 2.0 — Reliability and Experiment Validation
+
+Version 2.0 adds automated tests for recovery policies, circuit-breaker behaviour, experiment execution, benchmark aggregation, comparison, reporting, persistence, API handling, and recovery observability.
+
+### Automated Test Suite
+
+The V2 test suite was collected using:
+
+```powershell
+python -m pytest --collect -q
+```
+
+The collection check identified **141 tests**.
+
+A full test-suite execution completed with **141 passed**. The collection command and the full test execution are separate checks; collection confirms test discovery, while the full execution validates test outcomes.
+
+The automated tests cover:
+
+- Fixed retry and exponential backoff strategies.
+- Retry limits, retry scheduling, and recovery state transitions.
+- Circuit-breaker CLOSED, OPEN, and HALF_OPEN behaviour.
+- Recovery execution and node recovery locking.
+- Experiment creation, execution, timeout, and failure handling.
+- Benchmark trial sequencing and aggregate results.
+- Experiment repository persistence and pagination.
+- Experiment comparison and individual/group reports.
+- API validation, error responses, and unavailable-runner handling.
+- Prometheus recovery metrics and state persistence.
+- Existing node, service, routing, health, and system endpoints.
+
+### Live V2 Docker Validation
+
+The isolated V2 stack was started separately from V1 using `compose.v2.yaml` and the Compose project name `resiliencelab-v2`.
+
+The following live behaviours were verified:
+
+- V2 application health endpoint returned a running status.
+- All six V2 stack containers were running during validation.
+- A Docker node failure was injected and automatic recovery restored the node to healthy status.
+- Recovery attempt, success, and duration metrics appeared at `/metrics`.
+- Experiment benchmark execution completed two trials successfully.
+- Experiment records were retrieved from persistent storage.
+- Individual experiment reports, benchmark group reports, and experiment comparison responses were verified.
+- V2 Prometheus and Grafana services were accessible on their isolated ports.
+
+These are local integration observations, not production-scale performance results.
+
+### V2 Grafana Validation
+
+The manually created dashboard **ResilienceLab V2 - Reliability Overview** was verified in the V2 Grafana instance. It contains nine panels for recovery attempts, successful and failed recoveries, recovery duration, retries, circuit-breaker state, consecutive failures, success rate, and per-node recovery attempts.
+
+The dashboard is stored in Grafana persistent storage; it is not provisioned from a dashboard file in the repository.
+
+## 14. Updated V2 Limitations
+
+- The application still uses a single FastAPI coordinator.
+- Docker node management depends on access to the local Docker Engine.
+- The Docker socket provides powerful host-level access and must remain restricted to trusted local environments.
+- The routing mechanism demonstrates application-level request forwarding, not production-grade external load balancing.
+- System metrics represent the host machine rather than individual Docker nodes.
+- The current automated suite validates application behaviour but does not establish production-scale performance or reliability.
+- The V2 benchmark runner performs sequential recovery experiments; it is not a load-testing or stress-testing system.
+- Authentication, multi-user access, and production deployment hardening remain outside the current local implementation.

@@ -377,3 +377,65 @@ ResilienceLab currently runs as a local Docker-based distributed systems experim
 Its FastAPI backend, three Docker server nodes, Prometheus metrics collection, Grafana visualization, and SQLite persistence demonstrate the core self-healing and monitoring workflows.
 
 Further security improvements, automated testing, concurrency validation, benchmarking, and cloud deployment work are required before production use.
+
+---
+
+# Version 2.0 — Isolated Deployment
+
+## 14. V2 Docker Deployment
+
+ResilienceLab V2.0 uses a separate docker-compose project to keep the V2 stack isolated from the original V1 deployment.
+
+The V2 Compose file is `compose.v2.yaml`. Use the project name `resiliencelab-v2` for all V2 Compose commands.
+
+V2 docker containers and network are separate from V1. The V2 application uses port 8001, Prometheus uses 9091, and Grafana uses 3001.
+
+## 15. Start the V2 Stack
+
+Also ensure Docker Desktop is running. From the repository root, run:
+
+```powershell
+docker compose -p resiliencelab-v2 -f compose.v2.yaml up -d --build
+```
+
+Verify the containers:
+
+````powershell
+docker ps
+```
+
+V2 application and monitoring URLs:
+
+| Resource | URL |
+|---|--|
+| V2 Application | http://localhost:8001/ |
+| V2 API Documentation | http://localhost:8001/docs |
+| V2 API Health | http://localhost:8001/api/health |
+| V2 Prometheus | http://localhost:9091 |
+| V2 Prometheus Targets | http://localhost:9091/targets |
+| V2 Metrics | http://localhost:8001/metrics |
+| V2 Grafana | http://localhost:3001 |
+
+## 16. V2 Database and Monitoring Storage
+
+V2 uses the named Docker volume `resiliencelab-v2-data-isolated` for its persistent application data and the network `resiliencelab-v2-network`. The configuration keeps V2 data and container configuration separate from V1.
+
+Do not remove V1 volumes, containers, or networks while managing the V2 stack. Do not use `docker compose down ` without the explicit V2 project name and file flag.
+
+Example V2 container management commands:
+
+```powershell
+docker compose -p resiliencelab-v2 -f compose.v2.yaml ps
+docker compose -p resiliencelab-v2 -f compose.v2.yaml logs app
+```
+
+The V2 Grafana dashboard is manually created in Grafana and is called **ResilienceLab V2 - Reliability Overview**. It contains 9 panels. It is stored in Grafana persistent storage; it is not provisioned from a project dashboard file.
+
+## 17. Stop the V2 Stack
+To stop only the V2 Compose stack, run:
+
+```powershell
+docker compose -p resiliencelab-v2 -f compose.v2.yaml down
+```
+
+Do not use this command without the V2 project and file flags. The original V1 stack uses a different Compose file and project name.
